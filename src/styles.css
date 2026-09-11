@@ -2,7 +2,7 @@
 * { box-sizing: border-box; }
 body { margin: 0; min-width: 320px; min-height: 100vh; }
 button, input, textarea { font: inherit; }
-button:focus-visible, input:focus-visible, textarea:focus-visible, summary:focus-visible, a:focus-visible { outline: 3px solid #245ea8; outline-offset: 3px; }
+button:focus-visible, input:focus-visible, textarea:focus-visible, a:focus-visible { outline: 3px solid #245ea8; outline-offset: 3px; }
 .app { min-height: 100vh; display: grid; place-items: center; padding: 24px 20px; }
 .card, .modal { width: min(100%, 430px); background: #fff; border-radius: 24px; padding: 30px 26px; box-shadow: 0 8px 36px rgba(90, 45, 60, .12); }
 h1, h2 { font-family: "Hiragino Mincho ProN", "Yu Mincho", serif; line-height: 1.55; color: #302027; }
@@ -86,11 +86,11 @@ textarea { width: 100%; min-height: 110px; padding: 12px; margin-top: 8px; borde
 .answer-list span { display: block; width: fit-content; padding: 8px 12px; border-radius: 10px; background: #fff1f4; color: #593744; font-size: .88rem; font-weight: 800; line-height: 1.45; }
 .answer-list span::before { content: "こたえ："; font-weight: 700; }
 .memo-fields { margin: 20px 0 8px; }
-.memo-fields > label, .optional-memo label { display: block; margin-top: 18px; color: #302027; }
-.memo-fields > .small, .optional-memo .small { margin: 5px 0 0; }
-.optional-memo { margin-top: 18px; padding: 12px 14px 16px; border: 1px solid #d9cbd0; border-radius: 12px; background: #fffafb; }
-.optional-memo summary { min-height: 44px; padding: 10px 2px; color: #593744; cursor: pointer; font-weight: 800; }
-.optional-memo textarea { min-height: 90px; }
+.memo-field-group { margin-top: 18px; padding: 14px 14px 16px; border: 1px solid #d9cbd0; border-radius: 12px; background: #fffafb; }
+.memo-field-group:first-child { margin-top: 0; }
+.memo-field-group label { display: block; color: #302027; }
+.memo-field-group .small { margin: 5px 0 0; }
+.memo-field-group textarea { min-height: 90px; }
 .memo-display { margin: 22px 0; }
 .memo-display > div { margin-top: 12px; padding: 14px 16px; border-radius: 12px; background: #faf5f6; }
 .memo-display h2 { margin: 0 0 5px; font-family: inherit; font-size: .82rem; color: #765864; }
