@@ -107,6 +107,13 @@ export function recordsForMonth(records, year, month) {
     .sort(([first], [second]) => first.localeCompare(second));
 }
 
+export function selectedRecordsForReport(records, year, month, selectedKeys = null) {
+  const entries = recordsForMonth(records, year, month);
+  if (!Array.isArray(selectedKeys)) return entries;
+  const selected = new Set(selectedKeys);
+  return entries.filter(([key]) => selected.has(key));
+}
+
 export const REPORT_FIELD_LABELS = {
   childName: "お子さんの呼び名",
   birthDate: "生年月日",
@@ -140,8 +147,8 @@ export function ageInYearsMonths(birthDate, asOf = new Date()) {
   return `${Math.floor(months / 12)}歳${months % 12}か月`;
 }
 
-export function consultationReportText(records, year, month, details = {}, asOf = new Date()) {
-  const entries = recordsForMonth(records, year, month);
+export function consultationReportText(records, year, month, details = {}, asOf = new Date(), selectedKeys = null) {
+  const entries = selectedRecordsForReport(records, year, month, selectedKeys);
   const lines = [
     "きづきカレンダー 相談前整理シート",
     `作成日：${dateKey(asOf)}`,

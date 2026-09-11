@@ -12,6 +12,7 @@ import {
   questionsForDate,
   recordQuestions,
   recordsForMonth,
+  selectedRecordsForReport,
 } from "./core.js";
 import {
   CONSENT_KEY,
@@ -85,7 +86,12 @@ function ConsultationReport({ records, year, month, onClose }) {
   const [details, setDetails] = useState({});
   const [status, setStatus] = useState("");
   const entries = recordsForMonth(records, year, month);
+  const [selectedKeys, setSelectedKeys] = useState(() => entries.slice(-7).map(([key]) => key));
+  const selectedEntries = selectedRecordsForReport(records, year, month, selectedKeys);
   const updateDetail = (key, value) => setDetails((current) => ({ ...current, [key]: value }));
+  const toggleRecord = (key) => {
+    setSelectedKeys((current) => current.includes(key) ? current.filter((item) => item !== key) : [...current, key]);
+  };
   const summaryItems = Object.entries(REPORT_FIELD_LABELS).flatMap(([key, label]) => {
     const value = String(details[key] || "").trim();
     if (!value) return [];
@@ -94,7 +100,7 @@ function ConsultationReport({ records, year, month, onClose }) {
   });
 
   const shareReport = async () => {
-    const text = consultationReportText(records, year, month, details);
+    const text = consultationReportText(records, year, month, details, undefined, selectedKeys);
     try {
       if (navigator.share) {
         await navigator.share({ title: `${year}年${month + 1}月 相談前整理シート`, text });
@@ -113,6 +119,25 @@ function ConsultationReport({ records, year, month, onClose }) {
   return (
     <Modal title={`${year}年${month + 1}月 相談前整理シート`} onClose={onClose} className="consultation-report">
       <p className="report-lead">相談員が状況を把握しやすい要点を先に整理し、日々の記録を付録としてまとめます。分かる範囲だけ入力してください。</p>
+      <fieldset className="report-picker">
+        <legend>付録に入れる日々の記録</legend>
+        <p className="small">初期状態では直近7件を選んでいます。必要な日だけ残してください。</p>
+        <div className="report-picker-actions">
+          <button type="button" onClick={() => setSelectedKeys(entries.map(([key]) => key))} disabled={selectedKeys.length === entries.length}>すべて選択</button>
+          <button type="button" onClick={() => setSelectedKeys([])} disabled={!selectedKeys.length}>選択解除</button>
+        </div>
+        <div className="report-date-list">
+          {entries.map(([key]) => (
+            <label className={selectedKeys.includes(key) ? "selected" : ""} key={key}>
+              <input type="checkbox" checked={selectedKeys.includes(key)} onChange={() => toggleRecord(key)} />
+              <span>{key}</span>
+            </label>
+          ))}
+        </div>
+        <p className="report-count" aria-live="polite">{entries.length}件中 {selectedEntries.length}件を選択</p>
+        {selectedEntries.length > 10 && <p className="report-warning" role="note">10件を超えています。相談時間内に読み切れない可能性があるため、特に伝えたい日へ絞ることをおすすめします。</p>}
+        {!selectedEntries.length && <p className="report-warning" role="alert">付録に入れる記録を1件以上選んでください。</p>}
+      </fieldset>
       <div className="report-form">
         <h2>基本情報</h2>
         <label htmlFor="report-child">お子さんの呼び名（任意）</label>
@@ -141,7 +166,7 @@ function ConsultationReport({ records, year, month, onClose }) {
       </div>
       <section className="report-summary">
         <h2>相談前の整理</h2>
-        <p><strong>観察期間：</strong>{year}年{month + 1}月 <strong>記録日数：</strong>{entries.length}日</p>
+        <p><strong>観察期間：</strong>{year}年{month + 1}月 <strong>選択した記録：</strong>{selectedEntries.length}日分</p>
         {summaryItems.length ? (
           <dl>{summaryItems.map((item) => <div key={item.key}><dt>{item.label}</dt><dd>{item.value}</dd></div>)}</dl>
         ) : (
@@ -151,7 +176,7 @@ function ConsultationReport({ records, year, month, onClose }) {
       </section>
       <h2 className="report-appendix-title">日々の観察記録（付録）</h2>
       <p className="small">日によって質問が異なるため、回答数を発達の指標として比較することはできません。</p>
-      {entries.map(([key, record]) => {
+      {selectedEntries.map(([key, record]) => {
         const questions = recordQuestions(record, key);
         return (
           <section className="report-day" key={key}>
@@ -170,8 +195,8 @@ function ConsultationReport({ records, year, month, onClose }) {
       })}
       <p className="small report-photo-note">写真とアプリの自動振り返り文は、このレポートには含めていません。</p>
       <div className="report-actions">
-        <button className="button primary" type="button" onClick={shareReport}>相談用レポートを共有する</button>
-        <button className="button secondary" type="button" onClick={() => window.print()}>印刷・PDF保存</button>
+        <button className="button primary" type="button" disabled={!selectedEntries.length} onClick={shareReport}>相談用レポートを共有する</button>
+        <button className="button secondary" type="button" disabled={!selectedEntries.length} onClick={() => window.print()}>印刷・PDF保存</button>
         <button className="button ghost" type="button" onClick={onClose}>閉じる</button>
         {status && <p className="status" role="status">{status}</p>}
       </div>

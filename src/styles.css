@@ -44,6 +44,17 @@ textarea { width: 100%; min-height: 110px; padding: 12px; margin-top: 8px; borde
 .day.recorded { background: #f7dfe5; color: #4b2532; cursor: pointer; font-weight: 800; }
 .day span { display: block; color: #8b3f54; line-height: .5; }
 .report-entry, .backup-actions { margin-top: 24px; padding-top: 4px; }
+.report-picker { margin: 20px 0; padding: 16px; border: 2px solid #c98798; border-radius: 14px; }
+.report-picker legend { padding: 0 6px; font-weight: 800; color: #593744; }
+.report-picker-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.report-picker-actions button { min-height: 44px; padding: 8px; border: 1px solid #a9586d; border-radius: 10px; background: #fff; color: #573643; font-weight: 700; cursor: pointer; }
+.report-picker-actions button:disabled { opacity: .45; cursor: not-allowed; }
+.report-date-list { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 14px; }
+.report-date-list label { display: flex; align-items: center; gap: 8px; min-height: 44px; padding: 8px 10px; border: 2px solid #d9cbd0; border-radius: 10px; cursor: pointer; }
+.report-date-list label.selected { border-color: #704151; background: #fff1f4; font-weight: 800; }
+.report-date-list input { width: 20px; height: 20px; accent-color: #704151; }
+.report-count { margin-bottom: 0; color: #593744; font-weight: 800; }
+.report-warning { margin-bottom: 0; padding: 10px 12px; border-radius: 10px; background: #fff1d8; color: #513b17; line-height: 1.55; font-size: .86rem; font-weight: 700; }
 .report-form h2 { margin-top: 26px; padding-bottom: 5px; border-bottom: 1px solid #d9cbd0; }
 .report-form label { display: block; margin-top: 14px; font-weight: 700; }
 .report-form input { width: 100%; min-height: 44px; margin-top: 6px; padding: 10px 12px; border: 2px solid #8e7580; border-radius: 10px; }
@@ -76,7 +87,7 @@ textarea { width: 100%; min-height: 110px; padding: 12px; margin-top: 8px; borde
   body * { visibility: hidden !important; }
   .consultation-report, .consultation-report * { visibility: visible !important; }
   .consultation-report { position: absolute; inset: 0; width: 100%; max-width: none; max-height: none; overflow: visible; padding: 0; box-shadow: none; }
-  .consultation-report .icon-button, .report-actions, .report-photo-note, .report-lead, .report-form { display: none !important; }
+  .consultation-report .icon-button, .report-actions, .report-photo-note, .report-lead, .report-picker, .report-form { display: none !important; }
   .report-summary { break-inside: avoid; }
   .report-day { break-inside: avoid; }
 }

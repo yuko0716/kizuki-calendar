@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { ANSWER_LABELS, QUESTIONS, SAFE_FEEDBACK, ageInYearsMonths, answerForQuestion, consultationReportText, dateKey, fallbackSummary, monthIndex, monthParts, questionsForDate, recordsForMonth } from "../src/core.js";
+import { ANSWER_LABELS, QUESTIONS, SAFE_FEEDBACK, ageInYearsMonths, answerForQuestion, consultationReportText, dateKey, fallbackSummary, monthIndex, monthParts, questionsForDate, recordsForMonth, selectedRecordsForReport } from "../src/core.js";
 
 test("dateKey uses the local calendar date", () => {
   assert.equal(dateKey(new Date(2026, 0, 7)), "2026-01-07");
@@ -58,6 +58,20 @@ test("age is calculated in completed years and months", () => {
   assert.equal(ageInYearsMonths("2025-01-15", new Date(2026, 0, 15)), "1歳0か月");
   assert.equal(ageInYearsMonths("2027-01-01", new Date(2026, 0, 15)), "");
   assert.equal(ageInYearsMonths("2026-02-30", new Date(2026, 8, 11)), "");
+});
+
+test("consultation report includes only explicitly selected record dates", () => {
+  const records = {
+    "2026-09-01": { answers: [{ type: "yes", label: "はい", question: "1日の質問" }] },
+    "2026-09-02": { answers: [{ type: "no", label: "今日はなかったかな", question: "2日の質問" }] },
+    "2026-09-03": { answers: [{ type: "kinda", label: "ちょっとだけ", question: "3日の質問" }] },
+  };
+  assert.deepEqual(selectedRecordsForReport(records, 2026, 8, ["2026-09-03", "2026-09-01"]).map(([key]) => key), ["2026-09-01", "2026-09-03"]);
+  const report = consultationReportText(records, 2026, 8, {}, new Date(2026, 8, 11), ["2026-09-03", "2026-09-01"]);
+  assert.match(report, /記録日数：2日/);
+  assert.match(report, /2026-09-01/);
+  assert.match(report, /2026-09-03/);
+  assert.doesNotMatch(report, /2026-09-02/);
 });
 
 test("daily questions are deterministic, unique, and change across years", () => {
