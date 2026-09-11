@@ -4,7 +4,6 @@ import {
   REPORT_FIELD_LABELS,
   ageInYearsMonths,
   answerForQuestion,
-  consultationReportText,
   dateKey,
   fallbackSummary,
   monthIndex,
@@ -15,6 +14,12 @@ import {
   selectedRecordsForReport,
 } from "./core.js";
 import { relatedArticles } from "./resources.js";
+import {
+  consultationReportText,
+  recordMemoItems,
+  recordObservation,
+  recordSearchText,
+} from "./report.js";
 import {
   CONSENT_KEY,
   compressPhoto,
@@ -43,12 +48,12 @@ function Modal({ title, onClose, children, persistent = false, className = "" })
   useEffect(() => {
     const previousFocus = document.activeElement;
     const dialog = dialogRef.current;
-    dialog?.querySelector("button, input, textarea, a")?.focus();
+    dialog?.querySelector("button, input, textarea, a, summary")?.focus();
 
     const handleKeyDown = (event) => {
       if (event.key === "Escape" && !persistent) closeRef.current();
       if (event.key !== "Tab" || !dialog) return;
-      const focusable = [...dialog.querySelectorAll("button:not([disabled]), input:not([disabled]), textarea:not([disabled]), a[href]")];
+      const focusable = [...dialog.querySelectorAll("button:not([disabled]), input:not([disabled]), textarea:not([disabled]), a[href], summary")];
       if (!focusable.length) return;
       const first = focusable[0];
       const last = focusable.at(-1);
@@ -97,14 +102,14 @@ function ReportField({ id, label, value = "", onChange }) {
   );
 }
 
-function RelatedArticles({ note }) {
-  const articles = useMemo(() => relatedArticles(note, 3), [note]);
+function RelatedArticles({ text }) {
+  const articles = useMemo(() => relatedArticles(text, 3), [text]);
   if (!articles.length) return null;
 
   return (
     <section className="report-summary" aria-labelledby="related-articles-title">
       <h2 id="related-articles-title">今日の記録に近いテーマの記事</h2>
-      <p className="small">診断や判定ではありません。今日のメモに出てきた言葉から、あらかじめ確認して登録した記事だけを出しています。</p>
+      <p className="small">診断や判定ではありません。今日の記録に出てきた言葉から、あらかじめ確認して登録した記事だけを出しています。</p>
       {articles.map((article) => (
         <div className="report-day" key={article.id}>
           <p><strong>{article.title}</strong></p>
@@ -113,6 +118,21 @@ function RelatedArticles({ note }) {
         </div>
       ))}
       <p className="small">リンクを開くまで、今日の記録内容がリンク先へ送られることはありません。</p>
+    </section>
+  );
+}
+
+function MemoItems({ record }) {
+  const items = recordMemoItems(record);
+  if (!items.length) return null;
+  return (
+    <section className="memo-display" aria-label="その日のメモ">
+      {items.map((item) => (
+        <div key={item.key}>
+          <h2>{item.label}</h2>
+          <p>{item.value}</p>
+        </div>
+      ))}
     </section>
   );
 }
@@ -153,7 +173,7 @@ function ConsultationReport({ records, year, month, onClose }) {
 
   return (
     <Modal title={`${year}年${month + 1}月 相談に持っていくメモ`} onClose={onClose} className="consultation-report">
-      <p className="report-lead">相談で話したいことを、先にまとめておけます。書けるところだけでOKです。</p>
+      <p className="report-lead">次の相談で話したいことを、先にまとめておけます。書けるところだけでOKです。</p>
 
       <fieldset className="report-picker">
         <legend>いっしょに入れる日の記録</legend>
@@ -228,7 +248,7 @@ function ConsultationReport({ records, year, month, onClose }) {
                 </li>
               ))}
             </ul>
-            {record.note && <p><strong>メモ：</strong>{record.note}</p>}
+            <MemoItems record={record} />
           </section>
         );
       })}
@@ -247,10 +267,10 @@ function Consent({ onAccept }) {
   return (
     <Modal title="はじめる前に" onClose={() => {}} persistent>
       <div className="notice">
-        <p><strong>きづきカレンダーは、おうちで気づいたことをのこすためのアプリです。</strong></p>
+        <p><strong>きづきカレンダーは、健診のあとや次の相談までに、おうちで気づいたことをのこすためのアプリです。</strong></p>
         <p>「できる・できない」を決めるアプリではありません。気になることがあるときは、病院や保健師さん、子育て相談などに話してください。</p>
         <p>記録と写真は、このスマホやパソコンのブラウザにのこります。家族と同じ端末を使うときは、顔写真や、だれのものか分かる情報を入れすぎないようにしてください。ブラウザのデータを消したり、端末を変えたりすると、記録が消えることがあります。</p>
-        <p>今日のメモに近いテーマが見つかったときは、あらかじめ確認して登録した外部の記事を表示します。記録内容そのものを記事のサイトへ送って探すことはしません。</p>
+        <p>今日の記録に近いテーマが見つかったときは、あらかじめ確認して登録した外部の記事を表示します。記録内容そのものを記事のサイトへ送って探すことはしません。</p>
       </div>
       <button className="button primary" type="button" onClick={onAccept}>わかった、はじめる</button>
     </Modal>
@@ -310,10 +330,10 @@ function RecordDetail({ recordKey, record, onRecords, onClose }) {
           );
         })}
       </div>
-      {record.note && <><h2>メモ</h2><p>{record.note}</p></>}
+      <MemoItems record={record} />
       <h2>今日のまとめ</h2>
       <p className="summary">{record.summary}</p>
-      <RelatedArticles note={record.note} />
+      <RelatedArticles text={recordSearchText(record)} />
       <button className="button secondary" type="button" onClick={onClose}>閉じる</button>
     </Modal>
   );
@@ -378,7 +398,7 @@ function Calendar({ records, onRecords, onClose }) {
 
       <div className="report-entry">
         <h2>相談に持っていくメモ</h2>
-        <p className="small">この月の記録から、相談で見せるメモを作れます。</p>
+        <p className="small">この月の記録から、次の相談で見せるメモを作れます。</p>
         <button className="button primary" type="button" disabled={!recordsForMonth(records, year, month).length} onClick={() => setReportOpen(true)}>メモを作る</button>
       </div>
 
@@ -407,7 +427,9 @@ export default function App() {
   const [step, setStep] = useState(0);
   const [answers, setAnswers] = useState([]);
   const [selectedAnswer, setSelectedAnswer] = useState(null);
-  const [note, setNote] = useState("");
+  const [observation, setObservation] = useState(() => recordObservation(records[today]));
+  const [interpretation, setInterpretation] = useState(() => records[today]?.interpretation || "");
+  const [concern, setConcern] = useState(() => records[today]?.concern || "");
   const [screen, setScreen] = useState(() => records[today] ? "done" : "home");
   const [summary, setSummary] = useState(() => records[today]?.summary || "");
   const [calendarOpen, setCalendarOpen] = useState(false);
@@ -444,7 +466,9 @@ export default function App() {
     setStep(0);
     setAnswers([]);
     setSelectedAnswer(null);
-    setNote(records[today]?.note || "");
+    setObservation(recordObservation(records[today]));
+    setInterpretation(records[today]?.interpretation || "");
+    setConcern(records[today]?.concern || "");
     setIncludePhoto(false);
     setStatus("");
     setScreen("question");
@@ -458,7 +482,10 @@ export default function App() {
       [today]: {
         date: today,
         answers,
-        note: note.trim(),
+        observation: observation.trim(),
+        interpretation: interpretation.trim(),
+        concern: concern.trim(),
+        note: observation.trim(),
         summary: nextSummary,
         summarySource: "fixed",
         photo: records[today]?.photo || null,
@@ -475,7 +502,9 @@ export default function App() {
   };
 
   const share = async () => {
-    const text = `きづきカレンダー ${today}\n${summary}\n\n※おうちで見たことをのこした記録です。「できる・できない」を決めるものではありません。`;
+    const record = records[today] || { observation, interpretation, concern };
+    const memoText = recordMemoItems(record).map((item) => `${item.label}：${item.value}`).join("\n");
+    const text = `きづきカレンダー ${today}\n${summary}${memoText ? `\n\n${memoText}` : ""}\n\n※おうちで見たことをのこした記録です。「できる・できない」を決めるものではありません。`;
     try {
       if (navigator.share) {
         const shareData = { title: "きづきカレンダー", text };
@@ -505,9 +534,10 @@ export default function App() {
         {screen === "home" && (
           <>
             <div className="hero-icon" aria-hidden="true">🌱</div>
-            <p className="eyebrow">今日の「気づいた」をのこそう</p>
+            <p className="eyebrow">「様子を見ましょう」の、そのあとに</p>
             <h1>きづきカレンダー</h1>
-            <p>1日3問。できたかどうかをチェックするのではなく、今日のお子さんの様子を思い出すカレンダーです。</p>
+            <p><strong>健診のあと、次に相談するまで。</strong> 1日3問で、家で見えた小さな変化をのこすカレンダーです。</p>
+            <p className="small">できたかどうかを判定するのではなく、今日のお子さんの様子を思い出すために使います。</p>
             <button className="button primary" type="button" onClick={() => setScreen("question")}>今日の3問をはじめる</button>
             <button className="button ghost" type="button" onClick={() => setCalendarOpen(true)}>これまでの記録を見る</button>
           </>
@@ -542,12 +572,26 @@ export default function App() {
         {screen === "review" && (
           <>
             <div className="hero-icon" aria-hidden="true">📝</div>
-            <h1>もう少しのこす？</h1>
-            <p>今日あったことをのこしたければ書いてください。何も書かなくても、のこせます。</p>
-            <label htmlFor="note">今日のメモ <span className="small">（なくてもOK）</span></label>
-            <textarea id="note" maxLength="500" value={note} onChange={(event) => setNote(event.target.value)} placeholder="例：公園から帰るとき、まだ遊びたくて大泣きした" />
-            <p className="small">文字を打つのが大変なときは、スマホのキーボードにあるマイクから話して入力してもOKです。</p>
-            <p className="small">メモに近いテーマが見つかったときだけ、確認済みの記事をあとで表示します。</p>
+            <h1>今日のことを、もう少しのこす？</h1>
+            <p>見たことと、そう思ったことを分けて残せます。何も書かなくても大丈夫です。</p>
+            <div className="memo-fields">
+              <label htmlFor="observation"><strong>今日あったこと</strong> <span className="small">（なくてもOK）</span></label>
+              <p className="small">まずは、見たこと・聞いたことをそのまま。</p>
+              <textarea id="observation" maxLength="500" value={observation} onChange={(event) => setObservation(event.target.value)} placeholder="例：公園から帰る声をかけると、地面に座って泣いた" />
+              <p className="small">文字を打つのが大変なときは、スマホのキーボードにあるマイクから話して入力してもOKです。</p>
+
+              <details className="optional-memo">
+                <summary>思ったこと・気になることも残す</summary>
+                <label htmlFor="interpretation"><strong>こうかなと思ったこと</strong> <span className="small">（書きたいときだけ）</span></label>
+                <p className="small">見たこととは分けて、「こういう気持ちかな」などを書けます。</p>
+                <textarea id="interpretation" maxLength="500" value={interpretation} onChange={(event) => setInterpretation(event.target.value)} placeholder="例：まだ遊びたかったのかなと思った" />
+
+                <label htmlFor="concern"><strong>気になったこと</strong> <span className="small">（書きたいときだけ）</span></label>
+                <p className="small">あとで相談したいことや、心配していることがあれば。</p>
+                <textarea id="concern" maxLength="500" value={concern} onChange={(event) => setConcern(event.target.value)} placeholder="例：切り替えるときに毎回とても泣くのが気になる" />
+              </details>
+            </div>
+            <p className="small">記録に近いテーマが見つかったときだけ、確認済みの記事をあとで表示します。</p>
             <button className="button primary" type="button" onClick={finish}>今日の記録をのこす</button>
             {status && <p className="status" role="status">{status}</p>}
           </>
@@ -560,7 +604,8 @@ export default function App() {
             <h1>今日の記録、できました</h1>
             <p className="summary">{summary}</p>
             <p className="small">これは、おうちで見たことをまとめた記録です。「できる・できない」を決めるものではありません。</p>
-            <RelatedArticles note={records[today]?.note || note} />
+            <MemoItems record={records[today] || { observation, interpretation, concern }} />
+            <RelatedArticles text={recordSearchText(records[today] || { observation, interpretation, concern })} />
             {records[today]?.photo && (
               <label className="check">
                 <input type="checkbox" checked={includePhoto} onChange={(event) => setIncludePhoto(event.target.checked)} />
