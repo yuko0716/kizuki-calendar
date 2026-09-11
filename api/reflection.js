@@ -12,7 +12,7 @@ export default async function handler(req, res) {
   const answers = Array.isArray(req.body?.answers) ? req.body.answers.slice(0, 3) : [];
   const note = typeof req.body?.note === "string" ? req.body.note.trim().slice(0, 500) : "";
   if (answers.length !== 3 || answers.some((item) => typeof item?.question !== "string" || typeof item?.answer !== "string")) {
-    return send(res, 400, { error: "3つの回答をうまく読み取れませんでした。もう一度試してください。" });
+    return send(res, 400, { error: "3つのこたえをうまく読めませんでした。もう一度ためしてください。" });
   }
   try {
     const response = await fetch(endpoint, {
@@ -26,7 +26,7 @@ export default async function handler(req, res) {
     const outputs = payload?.data?.outputs || {};
     const reflection = String(outputs.reflection || outputs.text || payload.answer || "").trim();
     if (!reflection || reflection.length > 600 || BLOCKED_PATTERNS.some((pattern) => pattern.test(reflection))) {
-      return send(res, 422, { error: "AIの文章をそのまま出せなかったので、AIなしで保存します。" });
+      return send(res, 422, { error: "AIの文章は出さず、AIなしのまとめを使います。" });
     }
     return send(res, 200, { reflection });
   } catch (error) {
