@@ -14,6 +14,7 @@ import {
   recordsForMonth,
   selectedRecordsForReport,
 } from "./core.js";
+import { relatedArticles } from "./resources.js";
 import {
   CONSENT_KEY,
   compressPhoto,
@@ -22,7 +23,6 @@ import {
   readBackup,
   saveRecords,
 } from "./storage.js";
-import { requestReflection } from "./reflection.js";
 import "./styles.css";
 
 const DOMAIN_LABELS = {
@@ -43,12 +43,12 @@ function Modal({ title, onClose, children, persistent = false, className = "" })
   useEffect(() => {
     const previousFocus = document.activeElement;
     const dialog = dialogRef.current;
-    dialog?.querySelector("button, input, textarea")?.focus();
+    dialog?.querySelector("button, input, textarea, a")?.focus();
 
     const handleKeyDown = (event) => {
       if (event.key === "Escape" && !persistent) closeRef.current();
       if (event.key !== "Tab" || !dialog) return;
-      const focusable = [...dialog.querySelectorAll("button:not([disabled]), input:not([disabled]), textarea:not([disabled])")];
+      const focusable = [...dialog.querySelectorAll("button:not([disabled]), input:not([disabled]), textarea:not([disabled]), a[href]")];
       if (!focusable.length) return;
       const first = focusable[0];
       const last = focusable.at(-1);
@@ -94,6 +94,26 @@ function ReportField({ id, label, value = "", onChange }) {
       {label} <span className="small">（書けるときだけ）</span>
       <textarea id={`report-${id}`} value={value} onChange={(event) => onChange(event.target.value)} maxLength="400" />
     </label>
+  );
+}
+
+function RelatedArticles({ note }) {
+  const articles = useMemo(() => relatedArticles(note, 3), [note]);
+  if (!articles.length) return null;
+
+  return (
+    <section className="report-summary" aria-labelledby="related-articles-title">
+      <h2 id="related-articles-title">今日の記録に近いテーマの記事</h2>
+      <p className="small">診断や判定ではありません。今日のメモに出てきた言葉から、あらかじめ確認して登録した記事だけを出しています。</p>
+      {articles.map((article) => (
+        <div className="report-day" key={article.id}>
+          <p><strong>{article.title}</strong></p>
+          <p className="small">{article.source}</p>
+          <a href={article.url} target="_blank" rel="noreferrer">記事を開く ↗</a>
+        </div>
+      ))}
+      <p className="small">リンクを開くまで、今日の記録内容がリンク先へ送られることはありません。</p>
+    </section>
   );
 }
 
@@ -179,7 +199,7 @@ function ConsultationReport({ records, year, month, onClose }) {
         <ReportField id="helps" label="うまくいったこと" value={details.helps} onChange={(value) => updateDetail("helps", value)} />
         <ReportField id="history" label="これまで相談したこと" value={details.history} onChange={(value) => updateDetail("history", value)} />
         <ReportField id="parent-needs" label="家で困っていること" value={details.parentNeeds} onChange={(value) => updateDetail("parentNeeds", value)} />
-        <p className="small">ここに書いたことは、この画面を閉じると消えます。AIにも送りません。住所や学校名、仕事先などは書かないでください。</p>
+        <p className="small">ここに書いたことは、この画面を閉じると消えます。住所や学校名、仕事先などは書かないでください。</p>
       </div>
 
       <section className="report-summary">
@@ -212,7 +232,7 @@ function ConsultationReport({ records, year, month, onClose }) {
           </section>
         );
       })}
-      <p className="small report-photo-note">写真とAIのまとめは、このメモには入れません。</p>
+      <p className="small report-photo-note">写真と関連リンクは、このメモには入れません。</p>
       <div className="report-actions">
         <button className="button primary" type="button" disabled={!selectedEntries.length} onClick={shareReport}>送る</button>
         <button className="button secondary" type="button" disabled={!selectedEntries.length} onClick={() => window.print()}>紙にする・PDFにする</button>
@@ -230,7 +250,7 @@ function Consent({ onAccept }) {
         <p><strong>きづきカレンダーは、おうちで気づいたことをのこすためのアプリです。</strong></p>
         <p>「できる・できない」を決めるアプリではありません。気になることがあるときは、病院や保健師さん、子育て相談などに話してください。</p>
         <p>記録と写真は、このスマホやパソコンのブラウザにのこります。家族と同じ端末を使うときは、顔写真や、だれのものか分かる情報を入れすぎないようにしてください。ブラウザのデータを消したり、端末を変えたりすると、記録が消えることがあります。</p>
-        <p>「AIでまとめる」をえらんだときだけ、3つのこたえとメモをAIへ送ります。写真は送りません。名前、住所、学校名などは書かないでください。</p>
+        <p>今日のメモに近いテーマが見つかったときは、あらかじめ確認して登録した外部の記事を表示します。記録内容そのものを記事のサイトへ送って探すことはしません。</p>
       </div>
       <button className="button primary" type="button" onClick={onAccept}>わかった、はじめる</button>
     </Modal>
@@ -277,7 +297,7 @@ function RecordDetail({ recordKey, record, onRecords, onClose }) {
           <input type="file" accept="image/*" onChange={(event) => updatePhoto(event.target.files?.[0])} />
         </label>
       )}
-      <p className="small">写真はAIには送りません。送るときも、写真を入れるか自分でえらべます。</p>
+      <p className="small">写真は関連する記事を探すためには使いません。送るときも、写真を入れるか自分でえらべます。</p>
       {status && <p className="status" role="status">{status}</p>}
       <div className="answer-list">
         {record.answers?.map((answer, index) => {
@@ -293,6 +313,7 @@ function RecordDetail({ recordKey, record, onRecords, onClose }) {
       {record.note && <><h2>メモ</h2><p>{record.note}</p></>}
       <h2>今日のまとめ</h2>
       <p className="summary">{record.summary}</p>
+      <RelatedArticles note={record.note} />
       <button className="button secondary" type="button" onClick={onClose}>閉じる</button>
     </Modal>
   );
@@ -387,13 +408,11 @@ export default function App() {
   const [answers, setAnswers] = useState([]);
   const [selectedAnswer, setSelectedAnswer] = useState(null);
   const [note, setNote] = useState("");
-  const [useAi, setUseAi] = useState(false);
   const [screen, setScreen] = useState(() => records[today] ? "done" : "home");
   const [summary, setSummary] = useState(() => records[today]?.summary || "");
   const [calendarOpen, setCalendarOpen] = useState(false);
   const [includePhoto, setIncludePhoto] = useState(false);
   const [status, setStatus] = useState("");
-  const [loading, setLoading] = useState(false);
 
   const updateRecords = (updater) => {
     const next = updater(records);
@@ -426,27 +445,14 @@ export default function App() {
     setAnswers([]);
     setSelectedAnswer(null);
     setNote(records[today]?.note || "");
-    setUseAi(false);
     setIncludePhoto(false);
     setStatus("");
     setScreen("question");
   };
 
-  const finish = async () => {
-    setLoading(true);
+  const finish = () => {
     setStatus("");
-    let nextSummary = fallbackSummary(answers);
-    let source = "fixed";
-
-    if (useAi) {
-      try {
-        nextSummary = await requestReflection(answers, note);
-        source = "dify";
-      } catch (error) {
-        setStatus(`${error.message} AIなしのまとめでのこしました。`);
-      }
-    }
-
+    const nextSummary = fallbackSummary(answers);
     const nextRecords = {
       ...records,
       [today]: {
@@ -454,20 +460,18 @@ export default function App() {
         answers,
         note: note.trim(),
         summary: nextSummary,
-        summarySource: source,
+        summarySource: "fixed",
         photo: records[today]?.photo || null,
       },
     };
     const result = saveRecords(nextRecords);
     if (!result.ok) {
       setStatus(result.message);
-      setLoading(false);
       return;
     }
     setRecords(nextRecords);
     setSummary(nextSummary);
     setScreen("done");
-    setLoading(false);
   };
 
   const share = async () => {
@@ -541,13 +545,10 @@ export default function App() {
             <h1>もう少しのこす？</h1>
             <p>今日あったことをのこしたければ書いてください。何も書かなくても、のこせます。</p>
             <label htmlFor="note">今日のメモ <span className="small">（なくてもOK）</span></label>
-            <textarea id="note" maxLength="500" value={note} onChange={(event) => setNote(event.target.value)} placeholder="例：公園で犬を見て『わんわん』と言った" />
-            <label className="check">
-              <input type="checkbox" checked={useAi} onChange={(event) => setUseAi(event.target.checked)} />
-              AIに今日の記録を短くまとめてもらう
-            </label>
-            <p className="small">AIへ送るのは3つのこたえとこのメモだけ。写真は送りません。名前や住所、学校名などは書かないでください。</p>
-            <button className="button primary" type="button" disabled={loading} onClick={finish}>{loading ? "のこしています…" : "今日の記録をのこす"}</button>
+            <textarea id="note" maxLength="500" value={note} onChange={(event) => setNote(event.target.value)} placeholder="例：公園から帰るとき、まだ遊びたくて大泣きした" />
+            <p className="small">文字を打つのが大変なときは、スマホのキーボードにあるマイクから話して入力してもOKです。</p>
+            <p className="small">メモに近いテーマが見つかったときだけ、確認済みの記事をあとで表示します。</p>
+            <button className="button primary" type="button" onClick={finish}>今日の記録をのこす</button>
             {status && <p className="status" role="status">{status}</p>}
           </>
         )}
@@ -559,6 +560,7 @@ export default function App() {
             <h1>今日の記録、できました</h1>
             <p className="summary">{summary}</p>
             <p className="small">これは、おうちで見たことをまとめた記録です。「できる・できない」を決めるものではありません。</p>
+            <RelatedArticles note={records[today]?.note || note} />
             {records[today]?.photo && (
               <label className="check">
                 <input type="checkbox" checked={includePhoto} onChange={(event) => setIncludePhoto(event.target.checked)} />
