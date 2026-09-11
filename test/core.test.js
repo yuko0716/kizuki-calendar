@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { ANSWER_LABELS, QUESTIONS, SAFE_FEEDBACK, answerForQuestion, dateKey, fallbackSummary, monthIndex, monthParts, questionsForDate } from "../src/core.js";
+import { ANSWER_LABELS, QUESTIONS, SAFE_FEEDBACK, answerForQuestion, consultationReportText, dateKey, fallbackSummary, monthIndex, monthParts, questionsForDate, recordsForMonth } from "../src/core.js";
 
 test("dateKey uses the local calendar date", () => {
   assert.equal(dateKey(new Date(2026, 0, 7)), "2026-01-07");
@@ -22,6 +22,22 @@ test("every selected answer keeps its own type and label", () => {
 test("previous month navigation crosses the year boundary", () => {
   const january = monthIndex(new Date(2026, 0, 1));
   assert.deepEqual(monthParts(january - 1), { year: 2025, month: 11 });
+});
+
+test("consultation report contains only the selected month in date order", () => {
+  const makeRecord = (answer, note = "") => ({ answers: [{ type: answer, label: ANSWER_LABELS[answer], question: "見えたことはありましたか？" }], note });
+  const records = {
+    "2026-09-12": makeRecord("no"),
+    "2026-08-31": makeRecord("yes"),
+    "2026-09-02": makeRecord("kinda", "積み木を並べた"),
+  };
+  assert.deepEqual(recordsForMonth(records, 2026, 8).map(([key]) => key), ["2026-09-02", "2026-09-12"]);
+  const report = consultationReportText(records, 2026, 8, "はな", "言葉について");
+  assert.match(report, /お子さんの呼び名：はな/);
+  assert.match(report, /相談時に聞きたいこと：言葉について/);
+  assert.match(report, /積み木を並べた/);
+  assert.ok(report.indexOf("2026-09-02") < report.indexOf("2026-09-12"));
+  assert.doesNotMatch(report, /2026-08-31/);
 });
 
 test("daily questions are deterministic, unique, and change across years", () => {

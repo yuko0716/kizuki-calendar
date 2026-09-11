@@ -2,12 +2,14 @@ import { useEffect, useId, useMemo, useRef, useState } from "react";
 import {
   ANSWER_LABELS,
   answerForQuestion,
+  consultationReportText,
   dateKey,
   fallbackSummary,
   monthIndex,
   monthParts,
   questionsForDate,
   recordQuestions,
+  recordsForMonth,
 } from "./core.js";
 import {
   CONSENT_KEY,
@@ -20,7 +22,7 @@ import {
 import { requestReflection } from "./reflection.js";
 import "./styles.css";
 
-function Modal({ title, onClose, children, persistent = false }) {
+function Modal({ title, onClose, children, persistent = false, className = "" }) {
   const dialogRef = useRef(null);
   const closeRef = useRef(onClose);
   const titleId = useId();
@@ -64,7 +66,7 @@ function Modal({ title, onClose, children, persistent = false }) {
         if (!persistent && event.target === event.currentTarget) onClose();
       }}
     >
-      <section ref={dialogRef} className="modal" role="dialog" aria-modal="true" aria-labelledby={titleId}>
+      <section ref={dialogRef} className={`modal ${className}`.trim()} role="dialog" aria-modal="true" aria-labelledby={titleId}>
         <header className="modal-head">
           <h2 id={titleId}>{title}</h2>
           {!persistent && (
@@ -74,6 +76,71 @@ function Modal({ title, onClose, children, persistent = false }) {
         {children}
       </section>
     </div>
+  );
+}
+
+function ConsultationReport({ records, year, month, onClose }) {
+  const [childName, setChildName] = useState("");
+  const [topic, setTopic] = useState("");
+  const [status, setStatus] = useState("");
+  const entries = recordsForMonth(records, year, month);
+
+  const shareReport = async () => {
+    const text = consultationReportText(records, year, month, childName, topic);
+    try {
+      if (navigator.share) {
+        await navigator.share({ title: `${year}年${month + 1}月 相談用記録`, text });
+        setStatus("共有画面を開きました。");
+      } else if (navigator.clipboard) {
+        await navigator.clipboard.writeText(text);
+        setStatus("相談用記録をコピーしました。");
+      } else {
+        throw new Error("このブラウザでは共有できません。");
+      }
+    } catch (error) {
+      if (error.name !== "AbortError") setStatus(error.message || "共有できませんでした。");
+    }
+  };
+
+  return (
+    <Modal title={`${year}年${month + 1}月 相談用レポート`} onClose={onClose} className="consultation-report">
+      <p className="report-lead">相談先へ見せるため、表示中の月の記録を日付順にまとめます。</p>
+      <div className="report-form">
+        <label htmlFor="report-child">お子さんの呼び名（任意）</label>
+        <input id="report-child" value={childName} onChange={(event) => setChildName(event.target.value)} maxLength="30" />
+        <label htmlFor="report-topic">相談時に聞きたいこと（任意）</label>
+        <textarea id="report-topic" value={topic} onChange={(event) => setTopic(event.target.value)} maxLength="300" />
+        <p className="small">ここに入力した内容は端末へ保存せず、AIにも送信しません。</p>
+      </div>
+      <div className="report-meta">
+        <strong>記録日数：{entries.length}日</strong>
+        <p>家庭で見えた出来事の記録です。診断・評価ではありません。日によって質問が異なるため、回答数を発達の指標として比較することはできません。</p>
+      </div>
+      {entries.map(([key, record]) => {
+        const questions = recordQuestions(record, key);
+        return (
+          <section className="report-day" key={key}>
+            <h2>{key}</h2>
+            <ul>
+              {record.answers?.map((answer, index) => (
+                <li key={`${key}-report-${index}`}>
+                  <span>{questions[index]?.text || answer.question || "記録した質問"}</span>
+                  <strong>回答：{answer.label || ANSWER_LABELS[answer.type] || "回答済み"}</strong>
+                </li>
+              ))}
+            </ul>
+            {record.note && <p><strong>メモ：</strong>{record.note}</p>}
+          </section>
+        );
+      })}
+      <p className="small report-photo-note">写真とアプリの自動振り返り文は、このレポートには含めていません。</p>
+      <div className="report-actions">
+        <button className="button primary" type="button" onClick={shareReport}>相談用レポートを共有する</button>
+        <button className="button secondary" type="button" onClick={() => window.print()}>印刷・PDF保存</button>
+        <button className="button ghost" type="button" onClick={onClose}>閉じる</button>
+        {status && <p className="status" role="status">{status}</p>}
+      </div>
+    </Modal>
   );
 }
 
@@ -157,6 +224,7 @@ function Calendar({ records, onRecords, onClose }) {
   const currentMonthIndex = monthIndex(now);
   const [shownMonthIndex, setShownMonthIndex] = useState(currentMonthIndex);
   const [detailKey, setDetailKey] = useState(null);
+  const [reportOpen, setReportOpen] = useState(false);
   const [status, setStatus] = useState("");
   const importRef = useRef(null);
   const { year, month } = monthParts(shownMonthIndex);
@@ -205,17 +273,23 @@ function Calendar({ records, onRecords, onClose }) {
           );
         })}
       </div>
+      <div className="report-entry">
+        <h2>相談用レポート</h2>
+        <p className="small">表示中の月の記録を、人が読める形でまとめます。</p>
+        <button className="button primary" type="button" disabled={!recordsForMonth(records, year, month).length} onClick={() => setReportOpen(true)}>この月の相談用レポートを見る</button>
+      </div>
       <div className="backup-actions">
-        <h2>バックアップ</h2>
-        <p className="small">写真を含む全記録を書き出します。個人情報として安全な場所で保管してください。</p>
-        <button className="button secondary" type="button" onClick={() => downloadBackup(records)}>全記録を書き出す</button>
-        <button className="button secondary" type="button" onClick={() => importRef.current?.click()}>バックアップを読み込む</button>
+        <h2>データ復元用バックアップ</h2>
+        <p className="small">JSONは、端末変更やデータ消失時にアプリへ記録を戻すための機械用ファイルです。相談資料には使いません。</p>
+        <button className="button secondary" type="button" onClick={() => downloadBackup(records)}>復元用バックアップを書き出す</button>
+        <button className="button secondary" type="button" onClick={() => importRef.current?.click()}>バックアップから復元する</button>
         <input ref={importRef} className="visually-hidden" type="file" accept="application/json,.json" onChange={(event) => importBackup(event.target.files?.[0])} />
         {status && <p className="status" role="status">{status}</p>}
       </div>
       {detailKey && records[detailKey] && (
         <RecordDetail recordKey={detailKey} record={records[detailKey]} onRecords={onRecords} onClose={() => setDetailKey(null)} />
       )}
+      {reportOpen && <ConsultationReport records={records} year={year} month={month} onClose={() => setReportOpen(false)} />}
     </Modal>
   );
 }

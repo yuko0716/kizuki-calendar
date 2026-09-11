@@ -99,3 +99,34 @@ export function recordQuestions(record, key) {
   }
   return questionsForDate(key);
 }
+
+export function recordsForMonth(records, year, month) {
+  const prefix = `${year}-${String(month + 1).padStart(2, "0")}-`;
+  return Object.entries(records || {})
+    .filter(([key]) => key.startsWith(prefix))
+    .sort(([first], [second]) => first.localeCompare(second));
+}
+
+export function consultationReportText(records, year, month, childName = "", topic = "") {
+  const entries = recordsForMonth(records, year, month);
+  const lines = [
+    "きづきカレンダー 相談用記録",
+    `対象月：${year}年${month + 1}月`,
+    `記録日数：${entries.length}日`,
+  ];
+  if (childName.trim()) lines.push(`お子さんの呼び名：${childName.trim()}`);
+  if (topic.trim()) lines.push(`相談時に聞きたいこと：${topic.trim()}`);
+  lines.push("", "※家庭で見えた出来事の記録です。診断・評価ではありません。日によって質問が異なるため、回答数を発達の指標として比較することはできません。");
+
+  for (const [key, record] of entries) {
+    lines.push("", `■ ${key}`);
+    const questions = recordQuestions(record, key);
+    record.answers?.forEach((answer, index) => {
+      const question = questions[index];
+      lines.push(`・${question?.text || answer.question || "記録した質問"}`);
+      lines.push(`  回答：${answer.label || ANSWER_LABELS[answer.type] || "回答済み"}`);
+    });
+    if (record.note) lines.push(`メモ：${record.note}`);
+  }
+  return lines.join("\n");
+}
