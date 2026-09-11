@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { ANSWER_LABELS, QUESTIONS, SAFE_FEEDBACK, ageInYearsMonths, answerForQuestion, consultationReportText, dateKey, fallbackSummary, monthIndex, monthParts, questionsForDate, recordsForMonth, selectedRecordsForReport } from "../src/core.js";
+import { ANSWER_LABELS, QUESTION_DAYS, QUESTIONS, SAFE_FEEDBACK, ageInYearsMonths, answerForQuestion, consultationReportText, dateKey, fallbackSummary, monthIndex, monthParts, questionsForDate, recordsForMonth, selectedRecordsForReport } from "../src/core.js";
 
 test("dateKey uses the local calendar date", () => {
   assert.equal(dateKey(new Date(2026, 0, 7)), "2026-01-07");
@@ -15,6 +15,7 @@ test("every selected answer keeps its own type and label", () => {
       questionId: question.id,
       emoji: question.emoji,
       question: question.text,
+      domain: question.domain,
     });
   }
 });
@@ -62,9 +63,9 @@ test("age is calculated in completed years and months", () => {
 
 test("consultation report includes only explicitly selected record dates", () => {
   const records = {
-    "2026-09-01": { answers: [{ type: "yes", label: "はい", question: "1日の質問" }] },
-    "2026-09-02": { answers: [{ type: "no", label: "今日はなかったかな", question: "2日の質問" }] },
-    "2026-09-03": { answers: [{ type: "kinda", label: "ちょっとだけ", question: "3日の質問" }] },
+    "2026-09-01": { answers: [{ type: "yes", label: ANSWER_LABELS.yes, question: "1日の質問" }] },
+    "2026-09-02": { answers: [{ type: "no", label: ANSWER_LABELS.no, question: "2日の質問" }] },
+    "2026-09-03": { answers: [{ type: "kinda", label: ANSWER_LABELS.kinda, question: "3日の質問" }] },
   };
   assert.deepEqual(selectedRecordsForReport(records, 2026, 8, ["2026-09-03", "2026-09-01"]).map(([key]) => key), ["2026-09-01", "2026-09-03"]);
   const report = consultationReportText(records, 2026, 8, {}, new Date(2026, 8, 11), ["2026-09-03", "2026-09-01"]);
@@ -74,13 +75,37 @@ test("consultation report includes only explicitly selected record dates", () =>
   assert.doesNotMatch(report, /2026-09-02/);
 });
 
-test("daily questions are deterministic, unique, and change across years", () => {
-  const first = questionsForDate("2026-09-10");
-  const again = questionsForDate("2026-09-10");
-  const nextYear = questionsForDate("2027-09-10");
-  assert.deepEqual(first, again);
-  assert.equal(new Set(first.map(({ id }) => id)).size, 3);
-  assert.notDeepEqual(first, nextYear);
+test("question bank contains 30 days and 90 unique prompts", () => {
+  assert.equal(QUESTION_DAYS.length, 30);
+  assert.equal(QUESTIONS.length, 90);
+  assert.equal(new Set(QUESTIONS.map(({ id }) => id)).size, 90);
+});
+
+test("every day contains exactly one question from each observation domain", () => {
+  const expected = ["context", "interaction", "play"];
+  for (const day of QUESTION_DAYS) {
+    assert.equal(day.length, 3);
+    assert.deepEqual(day.map(({ domain }) => domain).sort(), expected);
+  }
+});
+
+test("daily questions are deterministic and advance through the 30-day cycle", () => {
+  const day1 = questionsForDate("2026-09-11");
+  const again = questionsForDate("2026-09-11");
+  const day2 = questionsForDate("2026-09-12");
+  const day31 = questionsForDate("2026-10-11");
+  assert.deepEqual(day1, again);
+  assert.notDeepEqual(day1, day2);
+  assert.deepEqual(day1, day31);
+  assert.deepEqual(day1.map(({ domain }) => domain), ["interaction", "play", "context"]);
+});
+
+test("answer labels describe observation rather than success or failure", () => {
+  assert.deepEqual(ANSWER_LABELS, {
+    yes: "見つけた",
+    kinda: "少し気づいた",
+    no: "今日は分からなかった",
+  });
 });
 
 test("user-facing prompts and summaries do not make guarantees or diagnoses", () => {
@@ -94,6 +119,6 @@ test("user-facing prompts and summaries do not make guarantees or diagnoses", ()
 });
 
 test("fallback summary reflects answer mix without evaluating development", () => {
-  assert.match(fallbackSummary([{ type: "no" }, { type: "no" }, { type: "yes" }]), /見つからなかった/);
-  assert.match(fallbackSummary([{ type: "kinda" }, { type: "kinda" }, { type: "yes" }]), /小さな反応/);
+  assert.match(fallbackSummary([{ type: "no" }, { type: "no" }, { type: "yes" }]), /分からなかった/);
+  assert.match(fallbackSummary([{ type: "kinda" }, { type: "kinda" }, { type: "yes" }]), /少し気づいた/);
 });
