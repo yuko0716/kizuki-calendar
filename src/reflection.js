@@ -5,6 +5,6 @@ export async function requestReflection(answers, note) {
     body: JSON.stringify({ answers: answers.map(({ question, label }) => ({ question, answer: label })), note: note.trim().slice(0, 500) }),
   });
   const payload = await response.json().catch(() => ({}));
-  if (!response.ok || !payload.reflection) throw new Error(payload.error || "AIの振り返りを取得できませんでした。");
+  if (!response.ok || !payload.reflection) throw new Error(payload.error || "AIでまとめられませんでした。");
   return payload.reflection;
 }
