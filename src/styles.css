@@ -1,0 +1,53 @@
+:root { font-family: -apple-system, BlinkMacSystemFont, "Hiragino Sans", "Yu Gothic", "Meiryo", sans-serif; color: #35252c; background: #faf5f6; font-synthesis: none; }
+* { box-sizing: border-box; }
+body { margin: 0; min-width: 320px; min-height: 100vh; }
+button, input, textarea { font: inherit; }
+button:focus-visible, input:focus-visible, textarea:focus-visible { outline: 3px solid #245ea8; outline-offset: 3px; }
+.app { min-height: 100vh; display: grid; place-items: center; padding: 24px 20px; }
+.card, .modal { width: min(100%, 430px); background: #fff; border-radius: 24px; padding: 30px 26px; box-shadow: 0 8px 36px rgba(90, 45, 60, .12); }
+h1, h2 { font-family: "Hiragino Mincho ProN", "Yu Mincho", serif; line-height: 1.55; color: #302027; }
+h1 { margin: 8px 0 18px; text-align: center; font-size: 1.6rem; }
+h2 { margin: 12px 0; font-size: 1.18rem; }
+p { line-height: 1.75; }
+.hero-icon, .question-emoji { text-align: center; font-size: 3rem; }
+.eyebrow, .hint, .small { color: #66525a; font-size: .86rem; }
+.eyebrow { text-align: center; }
+.button { width: 100%; min-height: 48px; margin-top: 12px; padding: 12px 16px; border-radius: 14px; border: 0; cursor: pointer; font-weight: 700; }
+.button:disabled { opacity: .55; cursor: not-allowed; }
+.primary { background: #704151; color: #fff; }
+.secondary { background: #fff4f6; color: #623747; border: 2px solid #c98798; }
+.ghost { background: transparent; color: #573643; text-decoration: underline; }
+.answer.yes { background: #a9586d; color: #fff; }
+.answer.kinda { background: #fff2f5; color: #5b3341; border: 2px solid #c98798; }
+.answer.no { background: #eee8ea; color: #45363b; }
+progress { width: 100%; accent-color: #a9586d; }
+.progress-text { color: #5d4851; font-weight: 700; }
+.answer-label, .status { color: #593744; font-weight: 700; }
+.feedback, .summary, .notice { background: #fff1f4; border-left: 4px solid #a9586d; border-radius: 4px 14px 14px 4px; padding: 16px 18px; line-height: 1.8; }
+textarea { width: 100%; min-height: 110px; padding: 12px; margin-top: 8px; border: 2px solid #8e7580; border-radius: 12px; resize: vertical; }
+.check { display: flex; gap: 10px; align-items: flex-start; margin-top: 16px; line-height: 1.5; font-weight: 700; }
+.check input { width: 22px; height: 22px; flex: 0 0 auto; }
+.overlay { position: fixed; inset: 0; z-index: 100; display: grid; place-items: center; padding: 20px; background: rgba(0,0,0,.48); }
+.modal { max-height: 90vh; overflow: auto; }
+.modal-head { display: flex; justify-content: space-between; align-items: center; gap: 16px; }
+.modal-head h2 { margin: 0; }
+.icon-button { min-width: 44px; min-height: 44px; border: 0; border-radius: 50%; background: #eee8ea; color: #33252a; font-size: 1.8rem; cursor: pointer; }
+.icon-button:disabled { opacity: .35; cursor: not-allowed; }
+.notice { font-size: .9rem; }
+.month-nav { display: flex; align-items: center; justify-content: space-between; margin: 18px 0; }
+.calendar { display: grid; grid-template-columns: repeat(7, 1fr); gap: 5px; }
+.weekday { text-align: center; color: #5d4851; font-size: .8rem; }
+.day { min-width: 38px; min-height: 42px; border: 0; border-radius: 10px; background: transparent; color: #382a30; }
+.day.recorded { background: #f7dfe5; color: #4b2532; cursor: pointer; font-weight: 800; }
+.day span { display: block; color: #8b3f54; line-height: .5; }
+.backup-actions { margin-top: 20px; }
+.visually-hidden { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0,0,0,0); white-space: nowrap; border: 0; }
+.photo-input { display: block; border: 2px dashed #a9586d; border-radius: 14px; padding: 20px; text-align: center; cursor: pointer; font-weight: 700; }
+.photo-input input { display: block; width: 100%; margin-top: 10px; }
+.photo-wrap img { width: 100%; max-height: 260px; object-fit: contain; border-radius: 14px; }
+.photo-remove { display: block; margin: 8px auto 16px; border: 0; background: transparent; color: #752f43; text-decoration: underline; cursor: pointer; }
+.answer-list > div { border-left: 3px solid #c98798; padding-left: 12px; margin-top: 16px; }
+.answer-list p { margin: 0 0 4px; }
+.answer-list span { color: #5d4851; }
+@media (max-width: 420px) { .card, .modal { padding: 24px 20px; border-radius: 20px; } .app { padding: 14px; } }
+@media (prefers-reduced-motion: reduce) { *, *::before, *::after { scroll-behavior: auto !important; animation: none !important; } }
