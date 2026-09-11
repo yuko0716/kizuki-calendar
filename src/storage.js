@@ -4,8 +4,8 @@ export const CONSENT_KEY = "kizuki_consent_v2";
 export const MAX_PHOTO_DATA_URL_LENGTH = 750_000;
 
 function storageMessage(error) {
-  if (error?.name === "QuotaExceededError") return "保存する場所がいっぱいです。先にバックアップを保存して、いらない写真を消してください。";
-  return "記録を保存できませんでした。端末の空き容量やブラウザの設定を確認してください。";
+  if (error?.name === "QuotaExceededError") return "記録をのこす場所がいっぱいです。先にバックアップをのこして、いらない写真を消してください。";
+  return "記録をのこせませんでした。スマホやパソコンの空きがあるか、ブラウザの設定を見てください。";
 }
 
 export function loadRecords() {
@@ -29,13 +29,13 @@ export function saveRecords(records) {
 
 export function compressPhoto(file) {
   return new Promise((resolve, reject) => {
-    if (!file?.type?.startsWith("image/")) { reject(new Error("写真や画像を選んでください。")); return; }
-    if (file.size > 10 * 1024 * 1024) { reject(new Error("写真が大きすぎます。10MBより小さい画像を選んでください。")); return; }
+    if (!file?.type?.startsWith("image/")) { reject(new Error("写真や画像をえらんでください。")); return; }
+    if (file.size > 10 * 1024 * 1024) { reject(new Error("写真が大きすぎます。10MBより小さい画像をえらんでください。")); return; }
     const image = new Image();
     const url = URL.createObjectURL(file);
     const cleanUp = () => URL.revokeObjectURL(url);
-    const timer = setTimeout(() => { cleanUp(); reject(new Error("写真を読み込めませんでした。もう一度試してください。")); }, 10_000);
-    image.onerror = () => { clearTimeout(timer); cleanUp(); reject(new Error("この写真は読み込めませんでした。別の画像を試してください。")); };
+    const timer = setTimeout(() => { cleanUp(); reject(new Error("写真を読みこめませんでした。もう一度ためしてください。")); }, 10_000);
+    image.onerror = () => { clearTimeout(timer); cleanUp(); reject(new Error("この写真は読みこめませんでした。別の画像をためしてください。")); };
     image.onload = () => {
       clearTimeout(timer);
       const scale = Math.min(1, 900 / image.width, 900 / image.height);
@@ -45,7 +45,7 @@ export function compressPhoto(file) {
       canvas.getContext("2d").drawImage(image, 0, 0, canvas.width, canvas.height);
       cleanUp();
       const result = canvas.toDataURL("image/jpeg", 0.68);
-      if (result.length > MAX_PHOTO_DATA_URL_LENGTH) { reject(new Error("写真を小さくしても保存できませんでした。別の写真を選んでください。")); return; }
+      if (result.length > MAX_PHOTO_DATA_URL_LENGTH) { reject(new Error("写真を小さくしても、のこせませんでした。別の写真をえらんでください。")); return; }
       resolve(result);
     };
     image.src = url;
@@ -67,7 +67,7 @@ export function downloadBackup(records) {
 export async function readBackup(file) {
   const parsed = JSON.parse(await file.text());
   if (parsed?.version !== 2 || !parsed.records || Array.isArray(parsed.records) || typeof parsed.records !== "object") {
-    throw new Error("きづきカレンダーのバックアップではないようです。別のファイルを選んでください。");
+    throw new Error("きづきカレンダーのバックアップではないようです。別のファイルをえらんでください。");
   }
   const entries = Object.entries(parsed.records);
   if (entries.length > 3660 || entries.some(([key, record]) =>
@@ -77,7 +77,7 @@ export async function readBackup(file) {
     || record.answers.length !== 3
     || (record.photo != null && (typeof record.photo !== "string" || record.photo.length > MAX_PHOTO_DATA_URL_LENGTH))
   )) {
-    throw new Error("このバックアップは読み込めませんでした。ファイルが壊れていないか確認してください。");
+    throw new Error("このバックアップは読みこめませんでした。別のバックアップがあれば、そちらをためしてください。");
   }
   return Object.fromEntries(entries);
 }
