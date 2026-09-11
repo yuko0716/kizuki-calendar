@@ -28,7 +28,7 @@ import "./styles.css";
 const DOMAIN_LABELS = {
   interaction: "やりとり",
   play: "遊び・動き",
-  context: "いつもとの違い",
+  context: "いつもとのちがい",
 };
 
 function Modal({ title, onClose, children, persistent = false, className = "" }) {
@@ -119,15 +119,15 @@ function ConsultationReport({ records, year, month, onClose }) {
     try {
       if (navigator.share) {
         await navigator.share({ title: `${year}年${month + 1}月 相談に持っていくメモ`, text });
-        setStatus("共有画面を開きました。送り先を選んでください。");
+        setStatus("送る画面を開きました。送り先をえらんでください。");
       } else if (navigator.clipboard) {
         await navigator.clipboard.writeText(text);
         setStatus("メモをコピーしました。");
       } else {
-        throw new Error("この端末では共有できませんでした。");
+        throw new Error("この端末ではメモを送れませんでした。");
       }
     } catch (error) {
-      if (error.name !== "AbortError") setStatus(error.message || "うまく共有できませんでした。");
+      if (error.name !== "AbortError") setStatus(error.message || "うまく送れませんでした。");
     }
   };
 
@@ -137,7 +137,7 @@ function ConsultationReport({ records, year, month, onClose }) {
 
       <fieldset className="report-picker">
         <legend>いっしょに入れる日の記録</legend>
-        <p className="small">まず最近7日分を選んでいます。見せたい日だけ残せます。</p>
+        <p className="small">まず最近7日分にチェックがついています。見せたい日だけにできます。</p>
         <div className="report-picker-actions">
           <button type="button" onClick={() => setSelectedKeys(entries.map(([key]) => key))} disabled={selectedKeys.length === entries.length}>全部えらぶ</button>
           <button type="button" onClick={() => setSelectedKeys([])} disabled={!selectedKeys.length}>いったん外す</button>
@@ -150,7 +150,7 @@ function ConsultationReport({ records, year, month, onClose }) {
             </label>
           ))}
         </div>
-        <p className="report-count" aria-live="polite">{entries.length}日分のうち {selectedEntries.length}日分を選んでいます</p>
+        <p className="report-count" aria-live="polite">{entries.length}日分のうち {selectedEntries.length}日分をえらんでいます</p>
         {selectedEntries.length > 10 && <p className="report-warning" role="note">10日分より多いと長くなります。特に見せたい日にしぼると読みやすいです。</p>}
         {!selectedEntries.length && <p className="report-warning" role="alert">1日以上えらんでください。</p>}
       </fieldset>
@@ -171,30 +171,30 @@ function ConsultationReport({ records, year, month, onClose }) {
         <h2>ふだんの様子</h2>
         <ReportField id="communication" label="ことばややりとり" value={details.communication} onChange={(value) => updateDetail("communication", value)} />
         <ReportField id="relationships" label="遊びや人との関わり" value={details.relationships} onChange={(value) => updateDetail("relationships", value)} />
-        <ReportField id="body-behavior" label="体の動き・感覚・行動" value={details.bodyBehavior} onChange={(value) => updateDetail("bodyBehavior", value)} />
-        <ReportField id="daily-life" label="ごはん・ねんね・トイレ・体調" value={details.dailyLife} onChange={(value) => updateDetail("dailyLife", value)} />
+        <ReportField id="body-behavior" label="体の動き・音や光・におい・味・さわり心地など" value={details.bodyBehavior} onChange={(value) => updateDetail("bodyBehavior", value)} />
+        <ReportField id="daily-life" label="ごはん・ねんね・トイレ・体の調子" value={details.dailyLife} onChange={(value) => updateDetail("dailyLife", value)} />
 
         <h2>家でのこと</h2>
         <ReportField id="strengths" label="好きなこと・得意なこと" value={details.strengths} onChange={(value) => updateDetail("strengths", value)} />
         <ReportField id="helps" label="うまくいったこと" value={details.helps} onChange={(value) => updateDetail("helps", value)} />
         <ReportField id="history" label="これまで相談したこと" value={details.history} onChange={(value) => updateDetail("history", value)} />
         <ReportField id="parent-needs" label="家で困っていること" value={details.parentNeeds} onChange={(value) => updateDetail("parentNeeds", value)} />
-        <p className="small">ここに書いたことは保存されず、AIにも送りません。この画面を閉じると消えます。住所や学校名、勤務先などは書かないでください。</p>
+        <p className="small">ここに書いたことは、この画面を閉じると消えます。AIにも送りません。住所や学校名、仕事先などは書かないでください。</p>
       </div>
 
       <section className="report-summary">
-        <h2>この内容で相談に持っていけます</h2>
-        <p><strong>{year}年{month + 1}月</strong>の記録から、<strong>{selectedEntries.length}日分</strong>を選んでいます。</p>
+        <h2>このまま相談に持っていけます</h2>
+        <p><strong>{year}年{month + 1}月</strong>の記録から、<strong>{selectedEntries.length}日分</strong>をえらんでいます。</p>
         {summaryItems.length ? (
           <dl>{summaryItems.map((item) => <div key={item.key}><dt>{item.label}</dt><dd>{item.value}</dd></div>)}</dl>
         ) : (
-          <p className="small">上に書いたことが、ここにまとまって表示されます。</p>
+          <p className="small">上に書いたことが、ここに出ます。</p>
         )}
-        <p className="small">これは診断書ではありません。おうちで見たことを、相談先へ伝えやすくするためのメモです。</p>
+        <p className="small">これは診断書ではありません。おうちで見たことを、相談先に伝えるためのメモです。</p>
       </section>
 
       <h2 className="report-appendix-title">えらんだ日の記録</h2>
-      <p className="small">毎日3つの質問で記録しています。回答の数で発達を比べるものではありません。</p>
+      <p className="small">毎日3つの質問で記録しています。こたえの数で、お子さんの育ちを決めるものではありません。</p>
       {selectedEntries.map(([key, record]) => {
         const questions = recordQuestions(record, key);
         return (
@@ -204,7 +204,7 @@ function ConsultationReport({ records, year, month, onClose }) {
               {record.answers?.map((answer, index) => (
                 <li key={`${key}-report-${index}`}>
                   <span>{questions[index]?.text || answer.question || "その日の質問"}</span>
-                  <strong>{answer.label || ANSWER_LABELS[answer.type] || "回答済み"}</strong>
+                  <strong>{answer.label || ANSWER_LABELS[answer.type] || "こたえた"}</strong>
                 </li>
               ))}
             </ul>
@@ -212,10 +212,10 @@ function ConsultationReport({ records, year, month, onClose }) {
           </section>
         );
       })}
-      <p className="small report-photo-note">写真とAIの振り返り文は、このメモには入れません。</p>
+      <p className="small report-photo-note">写真とAIのまとめは、このメモには入れません。</p>
       <div className="report-actions">
-        <button className="button primary" type="button" disabled={!selectedEntries.length} onClick={shareReport}>共有する</button>
-        <button className="button secondary" type="button" disabled={!selectedEntries.length} onClick={() => window.print()}>印刷・PDFにする</button>
+        <button className="button primary" type="button" disabled={!selectedEntries.length} onClick={shareReport}>送る</button>
+        <button className="button secondary" type="button" disabled={!selectedEntries.length} onClick={() => window.print()}>紙にする・PDFにする</button>
         <button className="button ghost" type="button" onClick={onClose}>閉じる</button>
         {status && <p className="status" role="status">{status}</p>}
       </div>
@@ -227,10 +227,10 @@ function Consent({ onAccept }) {
   return (
     <Modal title="はじめる前に" onClose={() => {}} persistent>
       <div className="notice">
-        <p><strong>きづきカレンダーは、おうちで気づいたことを残すためのアプリです。</strong></p>
-        <p>「できる・できない」を判定したり、発達を診断したりするアプリではありません。気になることがあれば、病院や保健師さん、子育て相談などへ相談してください。</p>
-        <p>記録と写真は、この端末のブラウザに保存します。家族と同じ端末を使う場合は、顔写真や個人が分かる情報の保存に気をつけてください。ブラウザのデータを消したり、端末を変えたりすると記録が消えることがあります。</p>
-        <p>「AIでまとめる」を選んだときだけ、3つの回答とメモをAIへ送ります。写真は送りません。名前、住所、学校名などはメモに書かないでください。</p>
+        <p><strong>きづきカレンダーは、おうちで気づいたことをのこすためのアプリです。</strong></p>
+        <p>「できる・できない」を決めるアプリではありません。気になることがあるときは、病院や保健師さん、子育て相談などに話してください。</p>
+        <p>記録と写真は、このスマホやパソコンのブラウザにのこります。家族と同じ端末を使うときは、顔写真や、だれのものか分かる情報を入れすぎないようにしてください。ブラウザのデータを消したり、端末を変えたりすると、記録が消えることがあります。</p>
+        <p>「AIでまとめる」をえらんだときだけ、3つのこたえとメモをAIへ送ります。写真は送りません。名前、住所、学校名などは書かないでください。</p>
       </div>
       <button className="button primary" type="button" onClick={onAccept}>わかった、はじめる</button>
     </Modal>
@@ -250,7 +250,7 @@ function RecordDetail({ recordKey, record, onRecords, onClose }) {
         ...current,
         [recordKey]: { ...current[recordKey], photo },
       }));
-      setStatus(result.ok ? "写真を保存しました。" : result.message);
+      setStatus(result.ok ? "写真をのこしました。" : result.message);
     } catch (error) {
       setStatus(error.message);
     }
@@ -268,7 +268,7 @@ function RecordDetail({ recordKey, record, onRecords, onClose }) {
     <Modal title={`${recordKey} の記録`} onClose={onClose}>
       {record.photo ? (
         <div className="photo-wrap">
-          <img src={record.photo} alt={`${recordKey}に保存した写真`} />
+          <img src={record.photo} alt={`${recordKey}にのこした写真`} />
           <button className="photo-remove" type="button" onClick={removePhoto}>写真を消す</button>
         </div>
       ) : (
@@ -277,7 +277,7 @@ function RecordDetail({ recordKey, record, onRecords, onClose }) {
           <input type="file" accept="image/*" onChange={(event) => updatePhoto(event.target.files?.[0])} />
         </label>
       )}
-      <p className="small">写真はAIには送りません。共有するときも、写真を入れるか自分で選べます。</p>
+      <p className="small">写真はAIには送りません。送るときも、写真を入れるか自分でえらべます。</p>
       {status && <p className="status" role="status">{status}</p>}
       <div className="answer-list">
         {record.answers?.map((answer, index) => {
@@ -285,7 +285,7 @@ function RecordDetail({ recordKey, record, onRecords, onClose }) {
           return (
             <div key={`${recordKey}-${index}`}>
               <p>{question?.emoji} {question?.text || "その日の質問"}</p>
-              <span>{answer.label || ANSWER_LABELS[answer.type] || "回答済み"}</span>
+              <span>{answer.label || ANSWER_LABELS[answer.type] || "こたえた"}</span>
             </div>
           );
         })}
@@ -316,9 +316,9 @@ function Calendar({ records, onRecords, onClose }) {
     try {
       const imported = await readBackup(file);
       const result = onRecords((current) => ({ ...current, ...imported }));
-      setStatus(result.ok ? "バックアップを読み込みました。" : result.message);
+      setStatus(result.ok ? "バックアップを読みこみました。" : result.message);
     } catch (error) {
-      setStatus(error.message || "バックアップを読み込めませんでした。");
+      setStatus(error.message || "バックアップを読みこめませんでした。");
     } finally {
       if (importRef.current) importRef.current.value = "";
     }
@@ -326,7 +326,7 @@ function Calendar({ records, onRecords, onClose }) {
 
   return (
     <Modal title="きづきカレンダー" onClose={onClose}>
-      <nav className="month-nav" aria-label="表示する月">
+      <nav className="month-nav" aria-label="見る月">
         <button className="month-button" type="button" onClick={() => setShownMonthIndex((value) => value - 1)}>← 前の月</button>
         <strong aria-live="polite">{year}年{month + 1}月</strong>
         <button className="month-button" type="button" onClick={() => setShownMonthIndex((value) => Math.min(value + 1, currentMonthIndex))} disabled={isCurrentMonth}>次の月 →</button>
@@ -363,9 +363,9 @@ function Calendar({ records, onRecords, onClose }) {
 
       <div className="backup-actions">
         <h2>もしものためのバックアップ</h2>
-        <p className="small">スマホを変えたときなどに、記録を戻すためのファイルです。相談に見せるものではありません。</p>
-        <button className="button secondary" type="button" onClick={() => downloadBackup(records)}>バックアップを保存する</button>
-        <button className="button secondary" type="button" onClick={() => importRef.current?.click()}>バックアップを読み込む</button>
+        <p className="small">スマホを変えたときなどに、記録をもどすためのファイルです。相談で見せるものではありません。</p>
+        <button className="button secondary" type="button" onClick={() => downloadBackup(records)}>バックアップをのこす</button>
+        <button className="button secondary" type="button" onClick={() => importRef.current?.click()}>バックアップを読みこむ</button>
         <input ref={importRef} className="visually-hidden" type="file" accept="application/json,.json" onChange={(event) => importBackup(event.target.files?.[0])} />
         {status && <p className="status" role="status">{status}</p>}
       </div>
@@ -443,7 +443,7 @@ export default function App() {
         nextSummary = await requestReflection(answers, note);
         source = "dify";
       } catch (error) {
-        setStatus(`${error.message} AIなしのまとめで保存しました。`);
+        setStatus(`${error.message} AIなしのまとめでのこしました。`);
       }
     }
 
@@ -471,27 +471,27 @@ export default function App() {
   };
 
   const share = async () => {
-    const text = `きづきカレンダー ${today}\n${summary}\n\n※おうちで見たことを残した記録です。診断ではありません。`;
+    const text = `きづきカレンダー ${today}\n${summary}\n\n※おうちで見たことをのこした記録です。「できる・できない」を決めるものではありません。`;
     try {
       if (navigator.share) {
         const shareData = { title: "きづきカレンダー", text };
         if (includePhoto && records[today]?.photo) {
           const blob = await (await fetch(records[today].photo)).blob();
           const file = new File([blob], `kizuki-${today}.jpg`, { type: blob.type || "image/jpeg" });
-          if (!navigator.canShare?.({ files: [file] })) throw new Error("この端末では写真を一緒に送れません。写真のチェックを外して、文章だけ共有してください。");
+          if (!navigator.canShare?.({ files: [file] })) throw new Error("この端末では写真をいっしょに送れません。写真のチェックを外して、文章だけ送ってください。");
           shareData.files = [file];
         }
         await navigator.share(shareData);
-        setStatus(shareData.files ? "共有画面を開きました。写真も入っています。" : "共有画面を開きました。文章だけ入っています。");
+        setStatus(shareData.files ? "送る画面を開きました。写真も入っています。" : "送る画面を開きました。文章だけ入っています。");
       } else if (navigator.clipboard) {
-        if (includePhoto) throw new Error("この端末では写真を一緒に送れません。写真のチェックを外してください。");
+        if (includePhoto) throw new Error("この端末では写真をいっしょに送れません。写真のチェックを外してください。");
         await navigator.clipboard.writeText(text);
         setStatus("文章をコピーしました。");
       } else {
-        throw new Error("この端末では共有できませんでした。");
+        throw new Error("この端末では送れませんでした。");
       }
     } catch (error) {
-      if (error.name !== "AbortError") setStatus(error.message || "うまく共有できませんでした。");
+      if (error.name !== "AbortError") setStatus(error.message || "うまく送れませんでした。");
     }
   };
 
@@ -501,7 +501,7 @@ export default function App() {
         {screen === "home" && (
           <>
             <div className="hero-icon" aria-hidden="true">🌱</div>
-            <p className="eyebrow">今日の「気づいた」を残そう</p>
+            <p className="eyebrow">今日の「気づいた」をのこそう</p>
             <h1>きづきカレンダー</h1>
             <p>1日3問。できたかどうかをチェックするのではなく、今日のお子さんの様子を思い出すカレンダーです。</p>
             <button className="button primary" type="button" onClick={() => setScreen("question")}>今日の3問をはじめる</button>
@@ -517,8 +517,8 @@ export default function App() {
             <div className="question-emoji" aria-hidden="true">{questions[step].emoji}</div>
             <h1>{questions[step].text}</h1>
             <p className="hint">{questions[step].hint}</p>
-            <p id="answer-help" className="answer-help">いちばん近いものを1つ選んでください。</p>
-            <div role="group" aria-label="回答" aria-describedby="answer-help">
+            <p id="answer-help" className="answer-help">いちばん近いものを1つえらんでください。</p>
+            <div role="group" aria-label="こたえ" aria-describedby="answer-help">
               {Object.entries(ANSWER_LABELS).map(([type, label]) => (
                 <button
                   className={`button answer${selectedAnswer === type ? " selected" : ""}`}
@@ -531,23 +531,23 @@ export default function App() {
                 </button>
               ))}
             </div>
-            <button className="button primary confirm-answer" type="button" disabled={!selectedAnswer} onClick={confirmAnswer}>{step === 2 ? "この回答でメモへ" : "この回答で次へ"}</button>
+            <button className="button primary confirm-answer" type="button" disabled={!selectedAnswer} onClick={confirmAnswer}>{step === 2 ? "これでメモへ" : "これで次へ"}</button>
           </>
         )}
 
         {screen === "review" && (
           <>
             <div className="hero-icon" aria-hidden="true">📝</div>
-            <h1>もう少し残す？</h1>
-            <p>今日あったことを残したければ書いてください。何も書かなくても保存できます。</p>
+            <h1>もう少しのこす？</h1>
+            <p>今日あったことをのこしたければ書いてください。何も書かなくても、のこせます。</p>
             <label htmlFor="note">今日のメモ <span className="small">（なくてもOK）</span></label>
             <textarea id="note" maxLength="500" value={note} onChange={(event) => setNote(event.target.value)} placeholder="例：公園で犬を見て『わんわん』と言った" />
             <label className="check">
               <input type="checkbox" checked={useAi} onChange={(event) => setUseAi(event.target.checked)} />
               AIに今日の記録を短くまとめてもらう
             </label>
-            <p className="small">AIへ送るのは3つの回答とこのメモだけ。写真は送りません。名前や住所、学校名などは書かないでください。</p>
-            <button className="button primary" type="button" disabled={loading} onClick={finish}>{loading ? "保存中…" : "今日の記録を保存する"}</button>
+            <p className="small">AIへ送るのは3つのこたえとこのメモだけ。写真は送りません。名前や住所、学校名などは書かないでください。</p>
+            <button className="button primary" type="button" disabled={loading} onClick={finish}>{loading ? "のこしています…" : "今日の記録をのこす"}</button>
             {status && <p className="status" role="status">{status}</p>}
           </>
         )}
@@ -558,14 +558,14 @@ export default function App() {
             <p className="eyebrow">{today}</p>
             <h1>今日の記録、できました</h1>
             <p className="summary">{summary}</p>
-            <p className="small">これは、おうちで見たことをまとめた記録です。発達を診断するものではありません。</p>
+            <p className="small">これは、おうちで見たことをまとめた記録です。「できる・できない」を決めるものではありません。</p>
             {records[today]?.photo && (
               <label className="check">
                 <input type="checkbox" checked={includePhoto} onChange={(event) => setIncludePhoto(event.target.checked)} />
                 写真もいっしょに送る
               </label>
             )}
-            <button className="button primary" type="button" onClick={share}>{includePhoto ? "文章と写真を共有する" : "文章を共有する"}</button>
+            <button className="button primary" type="button" onClick={share}>{includePhoto ? "文章と写真を送る" : "文章を送る"}</button>
             <button className="button secondary" type="button" onClick={() => setCalendarOpen(true)}>カレンダーを見る</button>
             <button className="button ghost" type="button" onClick={restartToday}>今日の3問をやり直す</button>
             {status && <p className="status" role="status">{status}</p>}
