@@ -48,12 +48,12 @@ function Modal({ title, onClose, children, persistent = false, className = "" })
   useEffect(() => {
     const previousFocus = document.activeElement;
     const dialog = dialogRef.current;
-    dialog?.querySelector("button, input, textarea, a, summary")?.focus();
+    dialog?.querySelector("button, input, textarea, a")?.focus();
 
     const handleKeyDown = (event) => {
       if (event.key === "Escape" && !persistent) closeRef.current();
       if (event.key !== "Tab" || !dialog) return;
-      const focusable = [...dialog.querySelectorAll("button:not([disabled]), input:not([disabled]), textarea:not([disabled]), a[href], summary")];
+      const focusable = [...dialog.querySelectorAll("button:not([disabled]), input:not([disabled]), textarea:not([disabled]), a[href]")];
       if (!focusable.length) return;
       const first = focusable[0];
       const last = focusable.at(-1);
@@ -269,7 +269,7 @@ function Consent({ onAccept }) {
       <div className="notice">
         <p><strong>きづきカレンダーは、健診のあとや次の相談までに、おうちで気づいたことをのこすためのアプリです。</strong></p>
         <p>「できる・できない」を決めるアプリではありません。気になることがあるときは、病院や保健師さん、子育て相談などに話してください。</p>
-        <p>記録と写真は、このスマホやパソコンのブラウザにのこります。家族と同じ端末を使うときは、顔写真や、だれのものか分かる情報を入れすぎないようにしてください。ブラウザのデータを消したり、端末を変えたりすると、記録が消えることがあります。</p>
+        <p>記録と写真は、このスマホやパソコンのブラウザにのこります。家族と同じ端末を使うときは、顔写真や、だれのものか分かる情報を入れすぎないようにしてください。ブラウザのデータを消したり、端末を変えたりすると、記録が消れることがあります。</p>
         <p>今日の記録に近いテーマが見つかったときは、あらかじめ確認して登録した外部の記事を表示します。記録内容そのものを記事のサイトへ送って探すことはしません。</p>
       </div>
       <button className="button primary" type="button" onClick={onAccept}>わかった、はじめる</button>
@@ -462,6 +462,16 @@ export default function App() {
     else setScreen("review");
   };
 
+  const editTodayMemo = () => {
+    setAnswers(records[today]?.answers || []);
+    setSelectedAnswer(null);
+    setObservation(recordObservation(records[today]));
+    setInterpretation(records[today]?.interpretation || "");
+    setConcern(records[today]?.concern || "");
+    setStatus("");
+    setScreen("review");
+  };
+
   const restartToday = () => {
     setStep(0);
     setAnswers([]);
@@ -573,23 +583,27 @@ export default function App() {
           <>
             <div className="hero-icon" aria-hidden="true">📝</div>
             <h1>今日のことを、もう少しのこす？</h1>
-            <p>見たことと、そう思ったことを分けて残せます。何も書かなくても大丈夫です。</p>
+            <p>見たこと、そう思ったこと、気になったことを分けて残せます。全部書かなくても大丈夫です。</p>
             <div className="memo-fields">
-              <label htmlFor="observation"><strong>今日あったこと</strong> <span className="small">（なくてもOK）</span></label>
-              <p className="small">まずは、見たこと・聞いたことをそのまま。</p>
-              <textarea id="observation" maxLength="500" value={observation} onChange={(event) => setObservation(event.target.value)} placeholder="例：公園から帰る声をかけると、地面に座って泣いた" />
-              <p className="small">文字を打つのが大変なときは、スマホのキーボードにあるマイクから話して入力してもOKです。</p>
+              <div className="memo-field-group">
+                <label htmlFor="observation"><strong>今日あったこと</strong> <span className="small">（なくてもOK）</span></label>
+                <p className="small">見たこと・聞いたことを、そのまま。</p>
+                <textarea id="observation" maxLength="500" value={observation} onChange={(event) => setObservation(event.target.value)} placeholder="例：公園から帰る声をかけると、地面に座って泣いた" />
+              </div>
 
-              <details className="optional-memo">
-                <summary>思ったこと・気になることも残す</summary>
+              <div className="memo-field-group">
                 <label htmlFor="interpretation"><strong>こうかなと思ったこと</strong> <span className="small">（書きたいときだけ）</span></label>
-                <p className="small">見たこととは分けて、「こういう気持ちかな」などを書けます。</p>
+                <p className="small">見たこととは分けて、「こういう気持ちかな」などを。</p>
                 <textarea id="interpretation" maxLength="500" value={interpretation} onChange={(event) => setInterpretation(event.target.value)} placeholder="例：まだ遊びたかったのかなと思った" />
+              </div>
 
+              <div className="memo-field-group">
                 <label htmlFor="concern"><strong>気になったこと</strong> <span className="small">（書きたいときだけ）</span></label>
                 <p className="small">あとで相談したいことや、心配していることがあれば。</p>
                 <textarea id="concern" maxLength="500" value={concern} onChange={(event) => setConcern(event.target.value)} placeholder="例：切り替えるときに毎回とても泣くのが気になる" />
-              </details>
+              </div>
+
+              <p className="small">文字を打つのが大変なときは、どの欄もスマホのキーボードにあるマイクから話して入力できます。</p>
             </div>
             <p className="small">記録に近いテーマが見つかったときだけ、確認済みの記事をあとで表示します。</p>
             <button className="button primary" type="button" onClick={finish}>今日の記録をのこす</button>
@@ -613,6 +627,7 @@ export default function App() {
               </label>
             )}
             <button className="button primary" type="button" onClick={share}>{includePhoto ? "文章と写真を送る" : "文章を送る"}</button>
+            <button className="button secondary" type="button" onClick={editTodayMemo}>今日のメモを追加・直す</button>
             <button className="button secondary" type="button" onClick={() => setCalendarOpen(true)}>カレンダーを見る</button>
             <button className="button ghost" type="button" onClick={restartToday}>今日の3問をやり直す</button>
             {status && <p className="status" role="status">{status}</p>}
