@@ -5,14 +5,14 @@ function send(res, status, payload) {
 }
 
 export default async function handler(req, res) {
-  if (req.method !== "POST") return send(res, 405, { error: "POSTのみ利用できます。" });
+  if (req.method !== "POST") return send(res, 405, { error: "この操作は使えません。" });
   const apiKey = process.env.DIFY_API_KEY;
   const endpoint = process.env.DIFY_API_URL || "https://api.dify.ai/v1/workflows/run";
-  if (!apiKey) return send(res, 503, { error: "AIまとめは準備中です。" });
+  if (!apiKey) return send(res, 503, { error: "AIまとめはまだ使えません。" });
   const answers = Array.isArray(req.body?.answers) ? req.body.answers.slice(0, 3) : [];
   const note = typeof req.body?.note === "string" ? req.body.note.trim().slice(0, 500) : "";
   if (answers.length !== 3 || answers.some((item) => typeof item?.question !== "string" || typeof item?.answer !== "string")) {
-    return send(res, 400, { error: "回答形式が正しくありません。" });
+    return send(res, 400, { error: "3つの回答をうまく読み取れませんでした。もう一度試してください。" });
   }
   try {
     const response = await fetch(endpoint, {
@@ -26,11 +26,11 @@ export default async function handler(req, res) {
     const outputs = payload?.data?.outputs || {};
     const reflection = String(outputs.reflection || outputs.text || payload.answer || "").trim();
     if (!reflection || reflection.length > 600 || BLOCKED_PATTERNS.some((pattern) => pattern.test(reflection))) {
-      return send(res, 422, { error: "安全基準を満たす振り返りを生成できませんでした。" });
+      return send(res, 422, { error: "AIの文章をそのまま出せなかったので、AIなしで保存します。" });
     }
     return send(res, 200, { reflection });
   } catch (error) {
     console.error("reflection_error", error instanceof Error ? error.message : "unknown");
-    return send(res, 502, { error: "AIまとめを取得できませんでした。" });
+    return send(res, 502, { error: "AIでまとめられませんでした。" });
   }
 }
