@@ -17,9 +17,10 @@ p { line-height: 1.75; }
 .primary { background: #704151; color: #fff; }
 .secondary { background: #fff4f6; color: #623747; border: 2px solid #c98798; }
 .ghost { background: transparent; color: #573643; text-decoration: underline; }
-.answer.yes { background: #a9586d; color: #fff; }
-.answer.kinda { background: #fff2f5; color: #5b3341; border: 2px solid #c98798; }
-.answer.no { background: #eee8ea; color: #45363b; }
+.answer { background: #fff; color: #4b2532; border: 2px solid #c98798; }
+.answer.selected { background: #704151; color: #fff; border-color: #704151; box-shadow: 0 0 0 3px #f3dce2; }
+.answer-help { color: #5d4851; font-size: .88rem; font-weight: 700; }
+.confirm-answer { margin-top: 20px; }
 progress { width: 100%; accent-color: #a9586d; }
 .progress-text { color: #5d4851; font-weight: 700; }
 .answer-label, .status { color: #593744; font-weight: 700; }
@@ -35,6 +36,8 @@ textarea { width: 100%; min-height: 110px; padding: 12px; margin-top: 8px; borde
 .icon-button:disabled { opacity: .35; cursor: not-allowed; }
 .notice { font-size: .9rem; }
 .month-nav { display: flex; align-items: center; justify-content: space-between; margin: 18px 0; }
+.month-button { min-width: 76px; min-height: 44px; padding: 8px; border: 2px solid #c98798; border-radius: 12px; background: #fff4f6; color: #573643; cursor: pointer; font-weight: 700; }
+.month-button:disabled { opacity: .35; cursor: not-allowed; }
 .calendar { display: grid; grid-template-columns: repeat(7, 1fr); gap: 5px; }
 .weekday { text-align: center; color: #5d4851; font-size: .8rem; }
 .day { min-width: 38px; min-height: 42px; border: 0; border-radius: 10px; background: transparent; color: #382a30; }

@@ -1,8 +1,11 @@
 import { useEffect, useId, useMemo, useRef, useState } from "react";
 import {
   ANSWER_LABELS,
+  answerForQuestion,
   dateKey,
   fallbackSummary,
+  monthIndex,
+  monthParts,
   questionsForDate,
   recordQuestions,
 } from "./core.js";
@@ -128,7 +131,7 @@ function RecordDetail({ recordKey, record, onRecords, onClose }) {
           <input type="file" accept="image/*" onChange={(event) => updatePhoto(event.target.files?.[0])} />
         </label>
       )}
-      <p className="small">写真はこの端末だけに保存され、AIや共有文には含まれません。</p>
+      <p className="small">写真はAIには送信されません。共有時に「保存した写真も共有に含める」を選んだ場合だけ添付されます。</p>
       {status && <p className="status" role="status">{status}</p>}
       <div className="answer-list">
         {record.answers?.map((answer, index) => {
@@ -151,17 +154,15 @@ function RecordDetail({ recordKey, record, onRecords, onClose }) {
 
 function Calendar({ records, onRecords, onClose }) {
   const now = new Date();
-  const [shown, setShown] = useState(new Date(now.getFullYear(), now.getMonth(), 1));
+  const currentMonthIndex = monthIndex(now);
+  const [shownMonthIndex, setShownMonthIndex] = useState(currentMonthIndex);
   const [detailKey, setDetailKey] = useState(null);
   const [status, setStatus] = useState("");
   const importRef = useRef(null);
-  const year = shown.getFullYear();
-  const month = shown.getMonth();
+  const { year, month } = monthParts(shownMonthIndex);
   const days = new Date(year, month + 1, 0).getDate();
   const offset = new Date(year, month, 1).getDay();
-  const isCurrentMonth = year === now.getFullYear() && month === now.getMonth();
-
-  const moveMonth = (amount) => setShown(new Date(year, month + amount, 1));
+  const isCurrentMonth = shownMonthIndex >= currentMonthIndex;
   const importBackup = async (file) => {
     if (!file) return;
     try {
@@ -178,9 +179,9 @@ function Calendar({ records, onRecords, onClose }) {
   return (
     <Modal title="きづきカレンダー" onClose={onClose}>
       <nav className="month-nav" aria-label="表示する月">
-        <button className="icon-button" type="button" aria-label="前の月" onClick={() => moveMonth(-1)}>‹</button>
+        <button className="month-button" type="button" onClick={() => setShownMonthIndex((value) => value - 1)}>← 前月</button>
         <strong aria-live="polite">{year}年{month + 1}月</strong>
-        <button className="icon-button" type="button" aria-label="次の月" onClick={() => moveMonth(1)} disabled={isCurrentMonth}>›</button>
+        <button className="month-button" type="button" onClick={() => setShownMonthIndex((value) => Math.min(value + 1, currentMonthIndex))} disabled={isCurrentMonth}>翌月 →</button>
       </nav>
       <div className="calendar" role="grid" aria-label={`${year}年${month + 1}月の記録`}>
         {["日", "月", "火", "水", "木", "金", "土"].map((day) => <div className="weekday" role="columnheader" key={day}>{day}</div>)}
@@ -226,6 +227,7 @@ export default function App() {
   const [records, setRecords] = useState(loadRecords);
   const [step, setStep] = useState(0);
   const [answers, setAnswers] = useState([]);
+  const [selectedAnswer, setSelectedAnswer] = useState(null);
   const [note, setNote] = useState("");
   const [useAi, setUseAi] = useState(false);
   const [screen, setScreen] = useState(() => records[today] ? "done" : "home");
@@ -251,18 +253,25 @@ export default function App() {
     setConsented(true);
   };
 
-  const answerQuestion = (type) => {
+  const confirmAnswer = () => {
+    if (!selectedAnswer) return;
     const question = questions[step];
-    const nextAnswers = [...answers, {
-      type,
-      label: ANSWER_LABELS[type],
-      questionId: question.id,
-      emoji: question.emoji,
-      question: question.text,
-    }];
+    const nextAnswers = [...answers, answerForQuestion(question, selectedAnswer)];
     setAnswers(nextAnswers);
-    if (step < 2) setStep(step + 1);
+    setSelectedAnswer(null);
+    if (step < questions.length - 1) setStep((current) => current + 1);
     else setScreen("review");
+  };
+
+  const restartToday = () => {
+    setStep(0);
+    setAnswers([]);
+    setSelectedAnswer(null);
+    setNote(records[today]?.note || "");
+    setUseAi(false);
+    setIncludePhoto(false);
+    setStatus("");
+    setScreen("question");
   };
 
   const finish = async () => {
@@ -337,9 +346,21 @@ export default function App() {
             <div className="question-emoji" aria-hidden="true">{questions[step].emoji}</div>
             <h1>{questions[step].text}</h1>
             <p className="hint">{questions[step].hint}</p>
-            {Object.entries(ANSWER_LABELS).map(([type, label]) => (
-              <button className={`button answer ${type}`} type="button" key={type} onClick={() => answerQuestion(type)}>{label}</button>
-            ))}
+            <p id="answer-help" className="answer-help">1つ選び、「この回答で次へ」を押してください。</p>
+            <div role="group" aria-label="回答" aria-describedby="answer-help">
+              {Object.entries(ANSWER_LABELS).map(([type, label]) => (
+                <button
+                  className={`button answer${selectedAnswer === type ? " selected" : ""}`}
+                  type="button"
+                  key={type}
+                  aria-pressed={selectedAnswer === type}
+                  onClick={() => setSelectedAnswer(type)}
+                >
+                  {selectedAnswer === type && <span aria-hidden="true">✓ </span>}{label}
+                </button>
+              ))}
+            </div>
+            <button className="button primary confirm-answer" type="button" disabled={!selectedAnswer} onClick={confirmAnswer}>この回答で次へ</button>
           </>
         )}
 
@@ -375,6 +396,7 @@ export default function App() {
             )}
             <button className="button primary" type="button" onClick={share}>{includePhoto ? "文章と写真を共有する" : "文章を共有する"}</button>
             <button className="button secondary" type="button" onClick={() => setCalendarOpen(true)}>カレンダー・写真・バックアップ</button>
+            <button className="button ghost" type="button" onClick={restartToday}>今日の回答をやり直す</button>
             {status && <p className="status" role="status">{status}</p>}
           </>
         )}

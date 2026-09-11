@@ -1,9 +1,27 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { QUESTIONS, SAFE_FEEDBACK, dateKey, fallbackSummary, questionsForDate } from "../src/core.js";
+import { ANSWER_LABELS, QUESTIONS, SAFE_FEEDBACK, answerForQuestion, dateKey, fallbackSummary, monthIndex, monthParts, questionsForDate } from "../src/core.js";
 
 test("dateKey uses the local calendar date", () => {
   assert.equal(dateKey(new Date(2026, 0, 7)), "2026-01-07");
+});
+
+test("every selected answer keeps its own type and label", () => {
+  const question = QUESTIONS[0];
+  for (const [type, label] of Object.entries(ANSWER_LABELS)) {
+    assert.deepEqual(answerForQuestion(question, type), {
+      type,
+      label,
+      questionId: question.id,
+      emoji: question.emoji,
+      question: question.text,
+    });
+  }
+});
+
+test("previous month navigation crosses the year boundary", () => {
+  const january = monthIndex(new Date(2026, 0, 1));
+  assert.deepEqual(monthParts(january - 1), { year: 2025, month: 11 });
 });
 
 test("daily questions are deterministic, unique, and change across years", () => {

@@ -33,6 +33,17 @@ export const QUESTIONS = [
 
 export const ANSWER_LABELS = { yes: "はい", kinda: "ちょっとだけ", no: "今日はなかったかな" };
 
+export function answerForQuestion(question, type) {
+  if (!question || !Object.hasOwn(ANSWER_LABELS, type)) throw new Error("回答を選んでください。");
+  return {
+    type,
+    label: ANSWER_LABELS[type],
+    questionId: question.id,
+    emoji: question.emoji,
+    question: question.text,
+  };
+}
+
 export const SAFE_FEEDBACK = {
   yes: "見つけた場面を、今日の記録として残しました。",
   kinda: "小さな変化も、見えた範囲で記録しておきましょう。",
@@ -41,6 +52,15 @@ export const SAFE_FEEDBACK = {
 
 export function dateKey(date = new Date()) {
   return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
+}
+
+export function monthIndex(date = new Date()) {
+  return date.getFullYear() * 12 + date.getMonth();
+}
+
+export function monthParts(index) {
+  const year = Math.floor(index / 12);
+  return { year, month: index - year * 12 };
 }
 
 function hashString(value) {
