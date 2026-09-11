@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { ANSWER_LABELS, QUESTION_DAYS, QUESTIONS, SAFE_FEEDBACK, ageInYearsMonths, answerForQuestion, consultationReportText, dateKey, fallbackSummary, monthIndex, monthParts, questionsForDate, recordsForMonth, selectedRecordsForReport } from "../src/core.js";
+import { ANSWER_LABELS, QUESTION_DAYS, QUESTIONS, REPORT_FIELD_LABELS, SAFE_FEEDBACK, ageInYearsMonths, answerForQuestion, consultationReportText, dateKey, fallbackSummary, monthIndex, monthParts, questionsForDate, recordsForMonth, selectedRecordsForReport } from "../src/core.js";
 
 test("dateKey uses the local calendar date", () => {
   assert.equal(dateKey(new Date(2026, 0, 7)), "2026-01-07");
@@ -48,7 +48,7 @@ test("consultation memo contains only the selected month in date order", () => {
   assert.match(report, /どんなときに起きる？：家で毎日/);
   assert.match(report, /好きなこと・得意なこと：積み木が好き/);
   assert.match(report, /相談先で聞きたいこと：家での関わり方を聞きたい/);
-  assert.match(report, /選んだ日の記録/);
+  assert.match(report, /えらんだ日の記録/);
   assert.match(report, /積み木を並べた/);
   assert.ok(report.indexOf("2026-09-02") < report.indexOf("2026-09-12"));
   assert.doesNotMatch(report, /2026-08-31/);
@@ -69,7 +69,7 @@ test("consultation memo includes only explicitly selected record dates", () => {
   };
   assert.deepEqual(selectedRecordsForReport(records, 2026, 8, ["2026-09-03", "2026-09-01"]).map(([key]) => key), ["2026-09-01", "2026-09-03"]);
   const report = consultationReportText(records, 2026, 8, {}, new Date(2026, 8, 11), ["2026-09-03", "2026-09-01"]);
-  assert.match(report, /選んだ記録：2日分/);
+  assert.match(report, /えらんだ記録：2日分/);
   assert.match(report, /2026-09-01/);
   assert.match(report, /2026-09-03/);
   assert.doesNotMatch(report, /2026-09-02/);
@@ -106,6 +106,17 @@ test("answer labels are simple and observation-focused", () => {
     kinda: "ちょっと気づいた",
     no: "今日はわからない",
   });
+});
+
+test("sensory wording covers more than touch", () => {
+  const sensory = QUESTIONS.find(({ id }) => id === 316);
+  assert.match(sensory.text, /音.*光.*におい.*味.*さわり心地.*揺れ.*動き/);
+  assert.equal(REPORT_FIELD_LABELS.bodyBehavior, "体の動き・音や光・におい・味・さわり心地など");
+});
+
+test("easy-language labels avoid administrative wording", () => {
+  const copy = Object.values(REPORT_FIELD_LABELS).join("\n");
+  assert.doesNotMatch(copy, /選択|回答|保存|共有|任意|観察|評価|支援|履歴|頻度|感覚/);
 });
 
 test("user-facing prompts and summaries do not make guarantees or diagnoses", () => {
