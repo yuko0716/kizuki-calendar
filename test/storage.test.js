@@ -13,7 +13,7 @@ test("saveRecords reports quota errors and never deletes old records", () => {
   };
   const result = saveRecords({ ...original, "2026-09-10": {} });
   assert.equal(result.ok, false);
-  assert.match(result.message, /保存容量/);
+  assert.match(result.message, /いっぱい/);
   assert.deepEqual(original, { "2026-09-09": { answers: [1, 2, 3] } });
 });
 
@@ -28,5 +28,5 @@ test("readBackup rejects malformed and oversized photo data", async () => {
     version: 2,
     records: { "2026-09-10": { answers: [{}, {}, {}], photo: "x".repeat(MAX_PHOTO_DATA_URL_LENGTH + 1) } },
   }) };
-  await assert.rejects(() => readBackup(file), /形式/);
+  await assert.rejects(() => readBackup(file), /読み込めません/);
 });
