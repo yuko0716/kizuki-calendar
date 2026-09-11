@@ -1,648 +1,642 @@
-import { useState, useEffect, useRef } from "react";
+import { useEffect, useId, useMemo, useRef, useState } from "react";
+import {
+  ANSWER_LABELS,
+  REPORT_FIELD_LABELS,
+  ageInYearsMonths,
+  answerForQuestion,
+  dateKey,
+  fallbackSummary,
+  monthIndex,
+  monthParts,
+  questionsForDate,
+  recordQuestions,
+  recordsForMonth,
+  selectedRecordsForReport,
+} from "./core.js";
+import { relatedArticles } from "./resources.js";
+import {
+  consultationReportText,
+  recordMemoItems,
+  recordObservation,
+  recordSearchText,
+} from "./report.js";
+import {
+  CONSENT_KEY,
+  compressPhoto,
+  downloadBackup,
+  loadRecords,
+  readBackup,
+  saveRecords,
+} from "./storage.js";
+import "./styles.css";
 
-const ALL_QUESTIONS = [
-  { id: 1, emoji: "🤝", text: "あなたが部屋に入ったとき、お子さんが気づいて反応しましたか？", hint: "目が向く、声を出す、どんな小さな反応でも" },
-  { id: 2, emoji: "😄", text: "一緒に笑えた瞬間がありましたか？", hint: "どんな場面でも、笑いが生まれたら" },
-  { id: 3, emoji: "👆", text: "何かを指差したり、あなたに「見て」と伝えようとしましたか？", hint: "声・視線・身振り、どんな形でも" },
-  { id: 4, emoji: "🫶", text: "困ったとき、あなたのそばに来ましたか？", hint: "目で探す、近づく、声を出すなど" },
-  { id: 5, emoji: "🎭", text: "あなたのしぐさや動作を真似しましたか？", hint: "掃除・食事・電話など、なんでも" },
-  { id: 6, emoji: "🗣️", text: "声・言葉・身振りで何か伝えようとしましたか？", hint: "「あー」「んー」も立派なコミュニケーション" },
-  { id: 7, emoji: "😢", text: "嫌なとき、「いや」と何らかの形で伝えましたか？", hint: "首を振る・手を払う・声を出すなど" },
-  { id: 8, emoji: "📖", text: "絵本や本を一緒に開いた時間がありましたか？", hint: "めくるだけでも、眺めるだけでも" },
-  { id: 9, emoji: "😊", text: "あなたが声をかけたとき、表情が変わりましたか？", hint: "どんな小さな変化でも" },
-  { id: 10, emoji: "🎵", text: "あなたの歌や声かけに、何か反応しましたか？", hint: "体が動く・表情が変わる・声を出すなど" },
-  { id: 11, emoji: "🔍", text: "何かにじっと集中していた瞬間がありましたか？", hint: "どんな対象でも、集中できていれば" },
-  { id: 12, emoji: "🔁", text: "同じ動作や遊びを繰り返していましたか？", hint: "繰り返しは学びのサインです" },
-  { id: 13, emoji: "📦", text: "入れる・出す・並べるなど、手を動かして遊んでいましたか？", hint: "どんな素材でも、繰り返しやっていれば" },
-  { id: 14, emoji: "🐛", text: "小さなものや動くものをじっと観察していましたか？", hint: "虫・葉・水など、何でも" },
-  { id: 15, emoji: "⏸️", text: "一人で落ち着いて過ごしている時間がありましたか？", hint: "一人遊びは安心の証です" },
-  { id: 16, emoji: "👁️", text: "今日、お子さんが自分から何かに向かって動く場面を見られましたか？", hint: "観察できた、それだけで十分" },
-  { id: 17, emoji: "🤲", text: "つまむ・はめる・積むなど、指先を使っていましたか？", hint: "小さな動きに大きな育ちがあります" },
-  { id: 18, emoji: "💧", text: "何かの素材や感触に自分から触れていましたか？", hint: "水・砂・布・食べ物など何でも" },
-  { id: 19, emoji: "🎶", text: "音や声に反応して体や表情が動きましたか？", hint: "揺れる・止まる・振り向くなど" },
-  { id: 20, emoji: "🏃", text: "全身を使って動き回る場面がありましたか？", hint: "走る・よじ登る・転がるなど" },
-  { id: 21, emoji: "💪", text: "うまくいかなくても、もう一度やろうとしましたか？", hint: "あきらめずに手を出し続けるだけでOK" },
-  { id: 22, emoji: "👟", text: "何か自分でやろうとする場面がありましたか？", hint: "靴・服・食事など、どんなことでも" },
-  { id: 23, emoji: "🍽️", text: "食事の時間、自分のペースで過ごせましたか？", hint: "食べ方より、その場にいられたかどうか" },
-  { id: 24, emoji: "🌿", text: "外で自分の興味に向かって動きましたか？", hint: "行きたい方向に歩く、触りに行くなど" },
-  { id: 25, emoji: "🧸", text: "お気に入りのものやこだわりの遊び方がありましたか？", hint: "好きなものがある、それ自体が育ちです" },
-  { id: 26, emoji: "💡", text: "「あ、こんなことわかるんだ」と思った瞬間がありましたか？", hint: "どんな小さな発見でも" },
-  { id: 27, emoji: "🌱", text: "小さくても「育ってる」と感じた場面はありましたか？", hint: "昨日と比べなくていいです" },
-  { id: 28, emoji: "🔄", text: "今日、お子さんのペースに合わせられた瞬間がありましたか？", hint: "一瞬でも合わせられたら十分" },
-  { id: 29, emoji: "🌤️", text: "今日のお子さんの顔で、印象に残っている表情はありましたか？", hint: "どんな表情でも、思い浮かべてみて" },
-  { id: 30, emoji: "🤲", text: "今日、一緒にいられてよかったと思えましたか？", hint: "少しでもそう思えたなら、それで十分" },
-];
-
-const R = {
-  1: { yes: "気づいてくれた。それはお子さんにとってあなたが特別な存在だということです。", kinda: "ほんの少しでも反応があった。それで十分です。感じ取っています。", no: "今日は気づかなかったかもしれない。でもそばにいたこと、伝わっています。" },
-  2: { yes: "笑いを共有できた。これが関係の土台になります。", kinda: "少しでも笑えた瞬間があった。それが今日の一番大事な時間です。", no: "笑えない日もあります。そばにいるだけで十分伝わっています。" },
-  3: { yes: "「見て」と伝えてくれた。共感しようとする育ちのサインです。", kinda: "少しでも伝えようとした。その気持ちの芽がちゃんとあります。", no: "今日は出なかった。でも「見て」と伝えたくなる相手がいる。それがあなたです。その瞬間は必ずきます。" },
-  4: { yes: "困ったときにあなたを選んだ。信頼関係がしっかり育っています。", kinda: "少しだけ近づいてきた。あなたのことを頼りにしている証です。", no: "今日は来なかった。でも来なくていいと思えるくらい、安心しているのかもしれません。" },
-  5: { yes: "真似してくれた。あなたのことをよく見ている証拠です。", kinda: "少し真似しようとした。観察する力が育っています。", no: "今日は出なかった。真似したくなるほど好きな人がいる。それがあなたです。その瞬間を楽しみに待っていてください。" },
-  6: { yes: "伝えようとした。その意欲が言葉の土台になります。", kinda: "少しでも伝えようとした。その小さな一歩が積み重なります。", no: "今日は出なかった。言葉はある日突然やってきます。その日を楽しみに待っていてください。" },
-  7: { yes: "「いや」と伝えられた。自分の気持ちを持っている証です。", kinda: "少しだけ出た。気持ちを伝えようとする力が育っています。", no: "今日は出なかった。自分の気持ちを出せる日が必ずきます。待っていてください。" },
-  8: { yes: "一緒に開けた。その時間がことばと関係の栄養になります。", kinda: "少しだけ開けた。それで十分です。", no: "今日は開けなかった。また明日、一ページだけでいいです。" },
-  9: { yes: "表情が変わった。あなたの声をちゃんと受け取っています。", kinda: "少しだけ変わった。感じ取っています。", no: "今日は変わらなかった。あなたの声は届いています。表情に出る日を楽しみに待っていてください。" },
-  10: { yes: "反応してくれた。あなたの声が一番届いています。", kinda: "少しだけ反応した。あなたの声を聞いています。", no: "今日は出なかった。歌や声に体が動き出す瞬間が必ずきます。その日まで歌い続けてください。" },
-  11: { yes: "集中できた。それがお子さんの学び方です。", kinda: "少しだけ集中した。その瞬間に育ちがあります。", no: "今日は出なかった。夢中になれる何かと出会う瞬間が必ずきます。その顔を見られるのはあなただけです。" },
-  12: { yes: "繰り返していた。それは飽きているのではなく、学んでいるサインです。", kinda: "少し繰り返していた。その積み重ねが育ちになります。", no: "今日は出なかった。同じことを何度もやり始めたら、それが夢中になっているサインです。見逃さないでください。" },
-  13: { yes: "手を動かして遊んでいた。指先の育ちが着実に進んでいます。", kinda: "少し手を動かしていた。それで十分です。", no: "今日は出なかった。手が動き始めたとき、その集中した顔をじっくり見てあげてください。" },
-  14: { yes: "じっと観察していた。世界をちゃんと受け取っています。", kinda: "少し見ていた。その好奇心が育ちの入口です。", no: "今日は出なかった。何かに釘付けになる瞬間が必ずきます。そのとき、一緒に覗き込んであげてください。" },
-  15: { yes: "一人で過ごせた。安心できているから一人でいられます。", kinda: "少しだけ一人でいられた。それが安心の証です。", no: "今日はそばにいたかった日。それもお子さんのペースです。求めてくれているうちが、実は一番幸せな時間かもしれません。" },
-  16: { yes: "見られた。その観察がお子さんの育ちを一番知っている人になる時間です。", kinda: "少しだけ見られた。その瞬間があれば十分です。", no: "今日は見られなかった。でも毎日見ようとしているあなたがいる。それがお子さんの育ちの土台です。" },
-  17: { yes: "指先を使っていた。小さな動きの中に大きな育ちがあります。", kinda: "少し使っていた。その積み重ねが手の育ちになります。", no: "今日は出なかった。指先が動き始めたとき、その真剣な顔をそばで見ていてあげてください。" },
-  18: { yes: "自分から触れていた。世界を体で受け取っています。", kinda: "少し触れていた。その好奇心がすべての学びの始まりです。", no: "今日は出なかった。何かに手を伸ばす瞬間が必ずきます。そのとき一緒に触ってみてください。" },
-  19: { yes: "体や表情が動いた。音の世界をちゃんと受け取っています。", kinda: "少し動いた。感じ取っています。", no: "今日は出なかった。音に体が動き出す瞬間が必ずきます。その日まで声をかけ続けてください。" },
-  20: { yes: "全身で動いていた。その勢いがそのままお子さんの育ちです。", kinda: "少し動いていた。体を動かそうとする気持ちが育っています。", no: "今日はそういう日じゃなかった。動き出したくなる日が必ずきます。その日は一緒に思い切り付き合ってあげてください。" },
-  21: { yes: "もう一度やろうとした。その粘り強さがお子さんの一番の力です。", kinda: "少しだけやろうとした。その気持ちがあれば十分です。", no: "今日は出なかった。あきらめずに手を伸ばす瞬間が必ずきます。そのとき、黙って見守っていてあげてください。" },
-  22: { yes: "自分でやろうとした。その「やりたい」気持ちが自立の始まりです。", kinda: "少しだけやろうとした。その芽がちゃんとあります。", no: "今日は出なかった。「自分で」と手を払いのける日が来たとき、それを喜んであげてください。" },
-  23: { yes: "自分のペースで過ごせた。それが一番大事なことです。", kinda: "少しだけ自分のペースがあった。それで十分です。", no: "今日はしんどい食事の時間だった。それでも一緒にテーブルにいた。それだけで十分です。" },
-  24: { yes: "興味に向かって動いた。その好奇心がお子さんの世界を広げていきます。", kinda: "少しだけ動いた。外に出た、それだけで十分です。", no: "今日は出なかった。いつかふと走り出す瞬間がきます。その背中を追いかけてあげてください。" },
-  25: { yes: "お気に入りがある。好きなものがあるということが、育ちの証です。", kinda: "少しだけ見えた。その「好き」をこれからも大切にしてあげてください。", no: "今日は出なかった。これだ、という出会いが必ずきます。その瞬間を一緒に喜んであげてください。" },
-  26: { yes: "気づけた。その発見があなたをお子さんの一番の理解者にしていきます。", kinda: "少しだけあった。その感覚を大事にしてください。", no: "今日は気づけなかった。でも気づこうとしているあなたがいる。その瞬間は必ずきます。見逃さないでください。" },
-  27: { yes: "感じられた。その感覚があなたとお子さんの関係を育てていきます。", kinda: "少しだけ感じた。その「少し」が積み重なっていきます。", no: "今日は感じられなかった。それでいいんです。育ちは感じられない日にも続いています。" },
-  28: { yes: "合わせられた。その瞬間がお子さんにとって一番安心できる時間です。", kinda: "少しだけ合わせられた。それで十分です。", no: "今日は合わせられなかった。それでも明日また試みるあなたがいる。それがお子さんには十分伝わっています。" },
-  29: { yes: "浮かんだ。その表情を覚えているあなたが、お子さんの一番の記録者です。", kinda: "少し浮かんだ。その記憶がこれからの宝になります。", no: "今日は浮かばなかった。それでいいんです。明日また見ればいい。その顔はどこにも行きません。" },
-  30: { yes: "思えた。その気持ちがお子さんの育ちの一番の栄養です。", kinda: "少しだけ思えた。それで十分です。今日もありがとうございました。", no: "思えなかった日もある。それが正直な気持ちなら、それでいいんです。それでも今日一日、一緒にいた。それがすべてです。" },
+const DOMAIN_LABELS = {
+  interaction: "やりとり",
+  play: "遊び・動き",
+  context: "いつもとのちがい",
 };
 
-const MP = {
-  1: "雪が音もなく積もるように、あなたの愛情は静かに、深く積もっています。",
-  2: "梅がどの花より早く春を知るように、あなたはお子さんの小さな変化を、誰より早く感じ取っています。",
-  3: "桃の花のように、あなたがそこにいるだけで、お子さんの心が温かくなっています。",
-  4: "桜の花びらが一瞬を美しく残すように、今日のお子さんの姿も、かけがえのない記録になっています。",
-  5: "花水木が空へ向かって咲くように、お子さんの小さな意欲を、あなたはそばで受けとめています。",
-  6: "紫陽花が雨の中で色を変えるように、お子さんの移ろう気持ちの変化を、あなたは丁寧に感じ取っています。",
-  7: "朝顔が朝の光にひらくように、お子さんの今日の始まりを、あなたはそばで見守っています。",
-  8: "陽に向かう向日葵のように、あなたはいつもお子さんの方を向いていました。それだけで、十分です。",
-  9: "秋桜が風に揺れながら咲くように、お子さんの揺れる気持ちも、あなたはそばで見守っています。",
-  10: "金木犀の香りにふと気づくように、お子さんの小さな変化を、あなたは見逃さずに拾っています。",
-  11: "紅葉が少しずつ色づくように、お子さんの育ちは、今日も静かに進んでいます。",
-  12: "柊の木が冬の中で葉を保つように、あなたの記録が来年のお子さんの育ちを支えます。",
-};
+function Modal({ title, onClose, children, persistent = false, className = "" }) {
+  const dialogRef = useRef(null);
+  const closeRef = useRef(onClose);
+  const titleId = useId();
 
-function dkey(d) {
-  return d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0") + "-" + String(d.getDate()).padStart(2, "0");
-}
+  useEffect(() => {
+    closeRef.current = onClose;
+  }, [onClose]);
 
-function tkey() {
-  return dkey(new Date());
-}
+  useEffect(() => {
+    const previousFocus = document.activeElement;
+    const dialog = dialogRef.current;
+    dialog?.querySelector("button, input, textarea, a")?.focus();
 
-function getQs(key) {
-  const seed = key.replace(/-/g, "");
-  let hash = parseInt(seed, 10) % 10000;
-  const pool = ALL_QUESTIONS.slice();
-  const out = [];
-  while (out.length < 3 && pool.length > 0) {
-    hash = (hash * 1103515245 + 12345) & 0x7fffffff;
-    out.push(pool.splice(hash % pool.length, 1)[0]);
-  }
-  return out;
-}
-
-function load() {
-  try {
-    return JSON.parse(localStorage.getItem("kizuki") || "{}");
-  } catch {
-    return {};
-  }
-}
-
-function save(data) {
-  try {
-    localStorage.setItem("kizuki", JSON.stringify(data));
-  } catch {
-    const keys = Object.keys(data).sort();
-    for (let i = 0; i < Math.floor(keys.length / 2); i++) {
-      if (data[keys[i]] && data[keys[i]].photo) delete data[keys[i]].photo;
-    }
-    try {
-      localStorage.setItem("kizuki", JSON.stringify(data));
-    } catch {
-      // 保存できない場合は何もしない
-    }
-  }
-}
-
-function compress(file) {
-  return new Promise((resolve, reject) => {
-    const img = new Image();
-    const url = URL.createObjectURL(file);
-    const timer = setTimeout(() => {
-      URL.revokeObjectURL(url);
-      reject(new Error("timeout"));
-    }, 10000);
-
-    img.onerror = () => {
-      clearTimeout(timer);
-      URL.revokeObjectURL(url);
-      reject(new Error("load failed"));
+    const handleKeyDown = (event) => {
+      if (event.key === "Escape" && !persistent) closeRef.current();
+      if (event.key !== "Tab" || !dialog) return;
+      const focusable = [...dialog.querySelectorAll("button:not([disabled]), input:not([disabled]), textarea:not([disabled]), a[href]")];
+      if (!focusable.length) return;
+      const first = focusable[0];
+      const last = focusable.at(-1);
+      if (event.shiftKey && document.activeElement === first) {
+        event.preventDefault();
+        last.focus();
+      } else if (!event.shiftKey && document.activeElement === last) {
+        event.preventDefault();
+        first.focus();
+      }
     };
 
-    img.onload = () => {
-      clearTimeout(timer);
-      const s = Math.min(1, 800 / img.width);
-      const c = document.createElement("canvas");
-      c.width = img.width * s;
-      c.height = img.height * s;
-      c.getContext("2d").drawImage(img, 0, 0, c.width, c.height);
-      URL.revokeObjectURL(url);
-      resolve(c.toDataURL("image/jpeg", 0.7));
+    document.addEventListener("keydown", handleKeyDown);
+    return () => {
+      document.removeEventListener("keydown", handleKeyDown);
+      previousFocus?.focus?.();
     };
+  }, [persistent]);
 
-    img.src = url;
-  });
-}
-
-function makeSummary(qs, answers) {
-  const noCount = answers.filter((a) => a.type === "no").length;
-  const kindaCount = answers.filter((a) => a.type === "kinda").length;
-  const yesCount = answers.filter((a) => a.type === "yes").length;
-
-  if (noCount >= 2) {
-    return "今日は、はっきり見えなかったことも多かったかもしれません。それでも、見ようとしてくれた時間そのものが記録です。育ちは、感じられない日にも静かに続いています。また明日も教えてください。";
-  }
-  if (kindaCount >= 2) {
-    return "今日は、小さな気づきがいくつか残りました。はっきりした変化でなくても、少しだけ見えたことには意味があります。その積み重ねが、お子さんの育ちを見つめる力になります。また明日も教えてください。";
-  }
-  if (yesCount >= 2) {
-    return "今日は、お子さんの姿がいくつも見えた日でした。できたことだけでなく、その場面を見つけられたことが大切な記録です。今日の気づきが、明日の関わりを少しやさしくしてくれます。また明日も教えてください。";
-  }
-  return "今日も、お子さんのそばで見守ってくれてありがとうございました。小さな気づきも、見えなかったことも、どちらも大切な記録です。お子さんのペースを、また一緒に見つめていきましょう。また明日も教えてください。";
-}
-
-function Overlay({ onClick, children }) {
   return (
-    <div onClick={onClick} style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.4)", zIndex: 100, display: "flex", alignItems: "center", justifyContent: "center", padding: 20 }}>
-      {children}
-    </div>
-  );
-}
-
-function Modal({ onClose, children, style }) {
-  return (
-    <Overlay onClick={onClose}>
-      <div onClick={(e) => e.stopPropagation()} style={Object.assign({ background: "white", borderRadius: 24, padding: "28px 24px", maxWidth: 380, width: "100%", boxShadow: "0 8px 48px rgba(150,80,100,0.15)", maxHeight: "85vh", overflowY: "auto" }, style || {})}>
+    <div
+      className="overlay"
+      onMouseDown={(event) => {
+        if (!persistent && event.target === event.currentTarget) onClose();
+      }}
+    >
+      <section ref={dialogRef} className={`modal ${className}`.trim()} role="dialog" aria-modal="true" aria-labelledby={titleId}>
+        <header className="modal-head">
+          <h2 id={titleId}>{title}</h2>
+          {!persistent && (
+            <button className="icon-button" type="button" aria-label="閉じる" onClick={onClose}>×</button>
+          )}
+        </header>
         {children}
-      </div>
-    </Overlay>
-  );
-}
-
-function MHead({ title, onClose }) {
-  return (
-    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20, fontFamily: "'Shippori Mincho',serif", fontSize: 17, color: "#3a2830" }}>
-      <span>{title}</span>
-      <button onClick={onClose} style={{ background: "none", border: "none", fontSize: 18, color: "#b8a0a8", cursor: "pointer", padding: "4px 8px" }}>✕</button>
+      </section>
     </div>
   );
 }
 
-function DisclaimerModal({ onAgree }) {
+function ReportField({ id, label, value = "", onChange }) {
   return (
-    <Overlay onClick={() => {}}>
-      <div style={{ background: "white", borderRadius: "24px 24px 0 0", padding: "32px 28px 40px", width: "100%", maxWidth: 480, maxHeight: "90vh", overflowY: "auto", position: "fixed", bottom: 0, left: 0, right: 0 }}>
-        <div style={{ fontSize: 36, textAlign: "center", marginBottom: 12 }}>🌱</div>
-        <p style={{ fontSize: 11, color: "#b8a0a8", textAlign: "center", marginBottom: 4 }}>
-          1歳半健診で様子を見ましょうと<br />言われたお子さんのための
-        </p>
-        <h2 style={{ fontFamily: "'Shippori Mincho',serif", fontSize: 20, fontWeight: 600, color: "#3a2830", textAlign: "center", marginBottom: 24 }}>きづきカレンダー</h2>
-        <div style={{ fontSize: 14, color: "#4a3038", lineHeight: 1.9, marginBottom: 20 }}>
-          <p style={{ marginBottom: 16 }}>このアプリは、1歳半健診後の「様子を見ましょう」期間に、日々の関わりの中での気づきを積み重ねるためのツールです。</p>
-          <p style={{ marginBottom: 12 }}>本アプリは、医療・療育・福祉的な診断や助言を行うものではありません。お子さまの発達や対応についての最終的な判断は、必ず保護者ご自身の責任において行ってください。気になる点や不安がある場合は、医療機関や専門機関へご相談ください。</p>
-          <p style={{ marginBottom: 12 }}>本アプリの記録は、お使いの端末内のみに保存されます。機種変更・アプリ削除・キャッシュ削除等により、記録が消失する可能性があります。大切な記録は、LINEのシェア機能等を利用して外部に保存することを推奨します。</p>
-          <p>本アプリは、日々の観察や気づきを支える補助ツールとしてご利用ください。特定の判断や行動を推奨・保証するものではありません。</p>
-        </div>
-        <div style={{ background: "#fdf0f2", borderRadius: 14, padding: 16, fontSize: 13, color: "#9b6b7a", lineHeight: 1.8, marginBottom: 24 }}>
-          上記をご理解のうえ、同意される方のみご利用ください。
-        </div>
-        <button onClick={onAgree} style={{ padding: "14px 20px", borderRadius: 14, border: "none", cursor: "pointer", fontFamily: "'Zen Maru Gothic',sans-serif", fontSize: 15, fontWeight: 500, width: "100%", background: "#7a4a58", color: "white" }}>同意してはじめる</button>
-      </div>
-    </Overlay>
+    <label htmlFor={`report-${id}`}>
+      {label} <span className="small">（書けるときだけ）</span>
+      <textarea id={`report-${id}`} value={value} onChange={(event) => onChange(event.target.value)} maxLength="400" />
+    </label>
   );
 }
 
-function DayModal({ dk, rec, records, setRecords, onClose }) {
-  const qs = getQs(dk);
-  const parts = dk.split("-");
-  const ans = rec.answers || [];
-  const [photo, setPhoto] = useState(rec.photo || null);
-  const [busy, setBusy] = useState(false);
-
-  async function onFile(e) {
-    const f = e.target.files && e.target.files[0];
-    if (!f) return;
-    setBusy(true);
-    try {
-      const img = await compress(f);
-      setPhoto(img);
-      const next = Object.assign({}, records);
-      next[dk] = Object.assign({}, next[dk], { photo: img });
-      setRecords(next);
-      save(next);
-    } catch {
-      // 画像読み込み失敗時は何もしない
-    }
-    setBusy(false);
-  }
-
-  function removePhoto() {
-    setPhoto(null);
-    const next = Object.assign({}, records);
-    const copy = Object.assign({}, next[dk]);
-    delete copy.photo;
-    next[dk] = copy;
-    setRecords(next);
-    save(next);
-  }
+function RelatedArticles({ text }) {
+  const articles = useMemo(() => relatedArticles(text, 3), [text]);
+  if (!articles.length) return null;
 
   return (
-    <Modal onClose={onClose}>
-      <MHead title={parseInt(parts[1], 10) + "月" + parseInt(parts[2], 10) + "日の記録"} onClose={onClose} />
-      {photo ? (
-        <div style={{ position: "relative", marginBottom: 16 }}>
-          <img src={photo} alt="" style={{ width: "100%", borderRadius: 14, objectFit: "cover", maxHeight: 200 }} />
-          <button onClick={removePhoto} style={{ position: "absolute", top: 8, right: 8, background: "rgba(0,0,0,0.5)", color: "white", border: "none", borderRadius: "50%", width: 28, height: 28, cursor: "pointer", fontSize: 14 }}>✕</button>
-        </div>
-      ) : (
-        <label style={{ display: "block", border: "2px dashed #e8c0c8", borderRadius: 14, padding: 20, textAlign: "center", color: "#9b6b7a", fontSize: 13, background: "#fdf0f2", cursor: "pointer", marginBottom: 16 }}>
-          {busy ? "読み込み中…" : "📷 今日の一枚を追加"}
-          <input type="file" accept="image/*" style={{ display: "none" }} onChange={onFile} />
-        </label>
-      )}
-
-      {rec.summary && (
-        <div style={{ background: "linear-gradient(135deg,#fdf0f4,#f8f0f5)", borderRadius: 14, padding: 16, marginBottom: 16, fontSize: 14, color: "#4a3038", lineHeight: 1.8 }}>{rec.summary}</div>
-      )}
-
-      {qs.map((q, i) => {
-        const a = ans[i];
-        const response = a && R[q.id] ? R[q.id][a.type] : null;
-        return (
-          <div key={q.id} style={{ borderLeft: "3px solid #e8c0c8", paddingLeft: 12, marginBottom: 12 }}>
-            <div style={{ fontSize: 13, color: "#3a2830", marginBottom: 4 }}>{q.emoji} {q.text}</div>
-            {a && <div style={{ fontSize: 12, color: "#9b6b7a", marginBottom: 4 }}>→ {a.text}</div>}
-            {response && <div style={{ fontSize: 12, color: "#a89098", lineHeight: 1.6 }}>{response}</div>}
-          </div>
-        );
-      })}
-      <button onClick={onClose} style={{ background: "transparent", color: "#b8a0a8", fontSize: 13, border: "none", cursor: "pointer", width: "100%", marginTop: 16, padding: 10 }}>閉じる</button>
-    </Modal>
-  );
-}
-
-function WeekModal({ records, onClose }) {
-  const today = new Date();
-  const keys = [];
-
-  for (let i = 6; i >= 0; i = i - 1) {
-    const d = new Date(today);
-    d.setDate(today.getDate() - i);
-    keys.push(dkey(d));
-  }
-
-  const seen = {};
-  keys.forEach((k) => {
-    const rec = records[k];
-    if (!rec) return;
-    getQs(k).forEach((q) => {
-      seen[q.id] = q;
-    });
-  });
-
-  const list = Object.values(seen);
-  const done = keys.filter((k) => !!records[k]).length;
-
-  return (
-    <Modal onClose={onClose}>
-      <MHead title="今週の問いかけ一覧" onClose={onClose} />
-      <div style={{ fontSize: 13, color: "#a89098", marginBottom: 20 }}>この7日間の記録：<span style={{ color: "#c4788a", fontWeight: 700 }}>{done}日</span></div>
-      {list.length === 0 && <p style={{ fontSize: 14, color: "#b8a0a8", textAlign: "center", padding: "24px 0" }}>今週はまだ記録がありません</p>}
-      {list.map((q) => (
-        <div key={q.id} style={{ borderLeft: "2px solid #f0e0e4", paddingLeft: 12, marginBottom: 16 }}>
-          <div style={{ fontSize: 14, color: "#3a2830", lineHeight: 1.6 }}>{q.emoji} {q.text}</div>
+    <section className="report-summary" aria-labelledby="related-articles-title">
+      <h2 id="related-articles-title">今日の記録に近いテーマの記事</h2>
+      <p className="small">診断や判定ではありません。今日の記録に出てきた言葉から、あらかじめ確認して登録した記事だけを出しています。</p>
+      {articles.map((article) => (
+        <div className="report-day" key={article.id}>
+          <p><strong>{article.title}</strong></p>
+          <p className="small">{article.source}</p>
+          <a href={article.url} target="_blank" rel="noreferrer">記事を開く ↗</a>
         </div>
       ))}
-      <button onClick={onClose} style={{ background: "transparent", color: "#b8a0a8", fontSize: 13, border: "none", cursor: "pointer", width: "100%", marginTop: 8, padding: 10 }}>閉じる</button>
+      <p className="small">リンクを開くまで、今日の記録内容がリンク先へ送られることはありません。</p>
+    </section>
+  );
+}
+
+function MemoItems({ record }) {
+  const items = recordMemoItems(record);
+  if (!items.length) return null;
+  return (
+    <section className="memo-display" aria-label="その日のメモ">
+      {items.map((item) => (
+        <div key={item.key}>
+          <h2>{item.label}</h2>
+          <p>{item.value}</p>
+        </div>
+      ))}
+    </section>
+  );
+}
+
+function ConsultationReport({ records, year, month, onClose }) {
+  const [details, setDetails] = useState({});
+  const [status, setStatus] = useState("");
+  const entries = recordsForMonth(records, year, month);
+  const [selectedKeys, setSelectedKeys] = useState(() => entries.slice(-7).map(([key]) => key));
+  const selectedEntries = selectedRecordsForReport(records, year, month, selectedKeys);
+  const updateDetail = (key, value) => setDetails((current) => ({ ...current, [key]: value }));
+  const toggleRecord = (key) => {
+    setSelectedKeys((current) => current.includes(key) ? current.filter((item) => item !== key) : [...current, key]);
+  };
+  const summaryItems = Object.entries(REPORT_FIELD_LABELS).flatMap(([key, label]) => {
+    const value = String(details[key] || "").trim();
+    if (!value) return [];
+    const age = key === "birthDate" ? ageInYearsMonths(value) : "";
+    return [{ key, label, value: `${value}${age ? `（今 ${age}）` : ""}` }];
+  });
+
+  const shareReport = async () => {
+    const text = consultationReportText(records, year, month, details, undefined, selectedKeys);
+    try {
+      if (navigator.share) {
+        await navigator.share({ title: `${year}年${month + 1}月 相談に持っていくメモ`, text });
+        setStatus("送る画面を開きました。送り先をえらんでください。");
+      } else if (navigator.clipboard) {
+        await navigator.clipboard.writeText(text);
+        setStatus("メモをコピーしました。");
+      } else {
+        throw new Error("この端末ではメモを送れませんでした。");
+      }
+    } catch (error) {
+      if (error.name !== "AbortError") setStatus(error.message || "うまく送れませんでした。");
+    }
+  };
+
+  return (
+    <Modal title={`${year}年${month + 1}月 相談に持っていくメモ`} onClose={onClose} className="consultation-report">
+      <p className="report-lead">次の相談で話したいことを、先にまとめておけます。書けるところだけでOKです。</p>
+
+      <fieldset className="report-picker">
+        <legend>いっしょに入れる日の記録</legend>
+        <p className="small">まず最近7日分にチェックがついています。見せたい日だけにできます。</p>
+        <div className="report-picker-actions">
+          <button type="button" onClick={() => setSelectedKeys(entries.map(([key]) => key))} disabled={selectedKeys.length === entries.length}>全部えらぶ</button>
+          <button type="button" onClick={() => setSelectedKeys([])} disabled={!selectedKeys.length}>いったん外す</button>
+        </div>
+        <div className="report-date-list">
+          {entries.map(([key]) => (
+            <label className={selectedKeys.includes(key) ? "selected" : ""} key={key}>
+              <input type="checkbox" checked={selectedKeys.includes(key)} onChange={() => toggleRecord(key)} />
+              <span>{key}</span>
+            </label>
+          ))}
+        </div>
+        <p className="report-count" aria-live="polite">{entries.length}日分のうち {selectedEntries.length}日分をえらんでいます</p>
+        {selectedEntries.length > 10 && <p className="report-warning" role="note">10日分より多いと長くなります。特に見せたい日にしぼると読みやすいです。</p>}
+        {!selectedEntries.length && <p className="report-warning" role="alert">1日以上えらんでください。</p>}
+      </fieldset>
+
+      <div className="report-form">
+        <h2>お子さんのこと</h2>
+        <label htmlFor="report-child">呼び名 <span className="small">（書かなくてもOK）</span></label>
+        <input id="report-child" value={details.childName || ""} onChange={(event) => updateDetail("childName", event.target.value)} maxLength="30" />
+        <label htmlFor="report-birth">生まれた日 <span className="small">（書かなくてもOK）</span></label>
+        <input id="report-birth" type="date" value={details.birthDate || ""} max={dateKey()} onChange={(event) => updateDetail("birthDate", event.target.value)} />
+
+        <h2>いちばん伝えたいこと</h2>
+        <ReportField id="main-concern" label="いちばん聞きたいこと" value={details.mainConcern} onChange={(value) => updateDetail("mainConcern", value)} />
+        <ReportField id="concern-since" label="いつごろから気になった？" value={details.concernSince} onChange={(value) => updateDetail("concernSince", value)} />
+        <ReportField id="contexts" label="どんなときに起きる？" value={details.contexts} onChange={(value) => updateDetail("contexts", value)} />
+        <ReportField id="support-wanted" label="相談先で聞きたいこと" value={details.supportWanted} onChange={(value) => updateDetail("supportWanted", value)} />
+
+        <h2>ふだんの様子</h2>
+        <ReportField id="communication" label="ことばややりとり" value={details.communication} onChange={(value) => updateDetail("communication", value)} />
+        <ReportField id="relationships" label="遊びや人との関わり" value={details.relationships} onChange={(value) => updateDetail("relationships", value)} />
+        <ReportField id="body-behavior" label="体の動き・音や光・におい・味・さわり心地など" value={details.bodyBehavior} onChange={(value) => updateDetail("bodyBehavior", value)} />
+        <ReportField id="daily-life" label="ごはん・ねんね・トイレ・体の調子" value={details.dailyLife} onChange={(value) => updateDetail("dailyLife", value)} />
+
+        <h2>家でのこと</h2>
+        <ReportField id="strengths" label="好きなこと・得意なこと" value={details.strengths} onChange={(value) => updateDetail("strengths", value)} />
+        <ReportField id="helps" label="うまくいったこと" value={details.helps} onChange={(value) => updateDetail("helps", value)} />
+        <ReportField id="history" label="これまで相談したこと" value={details.history} onChange={(value) => updateDetail("history", value)} />
+        <ReportField id="parent-needs" label="家で困っていること" value={details.parentNeeds} onChange={(value) => updateDetail("parentNeeds", value)} />
+        <p className="small">ここに書いたことは、この画面を閉じると消えます。住所や学校名、仕事先などは書かないでください。</p>
+      </div>
+
+      <section className="report-summary">
+        <h2>このまま相談に持っていけます</h2>
+        <p><strong>{year}年{month + 1}月</strong>の記録から、<strong>{selectedEntries.length}日分</strong>をえらんでいます。</p>
+        {summaryItems.length ? (
+          <dl>{summaryItems.map((item) => <div key={item.key}><dt>{item.label}</dt><dd>{item.value}</dd></div>)}</dl>
+        ) : (
+          <p className="small">上に書いたことが、ここに出ます。</p>
+        )}
+        <p className="small">これは診断書ではありません。おうちで見たことを、相談先に伝えるためのメモです。</p>
+      </section>
+
+      <h2 className="report-appendix-title">えらんだ日の記録</h2>
+      <p className="small">毎日3つの質問で記録しています。こたえの数で、お子さんの育ちを決めるものではありません。</p>
+      {selectedEntries.map(([key, record]) => {
+        const questions = recordQuestions(record, key);
+        return (
+          <section className="report-day" key={key}>
+            <h2>{key}</h2>
+            <ul>
+              {record.answers?.map((answer, index) => (
+                <li key={`${key}-report-${index}`}>
+                  <span>{questions[index]?.text || answer.question || "その日の質問"}</span>
+                  <strong>{answer.label || ANSWER_LABELS[answer.type] || "こたえた"}</strong>
+                </li>
+              ))}
+            </ul>
+            <MemoItems record={record} />
+          </section>
+        );
+      })}
+      <p className="small report-photo-note">写真と関連リンクは、このメモには入れません。</p>
+      <div className="report-actions">
+        <button className="button primary" type="button" disabled={!selectedEntries.length} onClick={shareReport}>送る</button>
+        <button className="button secondary" type="button" disabled={!selectedEntries.length} onClick={() => window.print()}>紙にする・PDFにする</button>
+        <button className="button ghost" type="button" onClick={onClose}>閉じる</button>
+        {status && <p className="status" role="status">{status}</p>}
+      </div>
     </Modal>
   );
 }
 
-function CalModal({ records, setRecords, onClose }) {
-  const today = new Date();
-  const yr = today.getFullYear();
-  const mo = today.getMonth();
-  const tk = tkey();
-  const firstDay = new Date(yr, mo, 1).getDay();
-  const lastDay = new Date(yr, mo + 1, 0).getDate();
-  const prefix = yr + "-" + String(mo + 1).padStart(2, "0");
-  const [dayView, setDayView] = useState(null);
-  const [weekView, setWeekView] = useState(false);
+function Consent({ onAccept }) {
+  return (
+    <Modal title="はじめる前に" onClose={() => {}} persistent>
+      <div className="notice">
+        <p><strong>きづきカレンダーは、健診のあとや次の相談までに、おうちで気づいたことをのこすためのアプリです。</strong></p>
+        <p>「できる・できない」を決めるアプリではありません。気になることがあるときは、病院や保健師さん、子育て相談などに話してください。</p>
+        <p>記録と写真は、このスマホやパソコンのブラウザにのこります。家族と同じ端末を使うときは、顔写真や、だれのものか分かる情報を入れすぎないようにしてください。ブラウザのデータを消したり、端末を変えたりすると、記録が消れることがあります。</p>
+        <p>今日の記録に近いテーマが見つかったときは、あらかじめ確認して登録した外部の記事を表示します。記録内容そのものを記事のサイトへ送って探すことはしません。</p>
+      </div>
+      <button className="button primary" type="button" onClick={onAccept}>わかった、はじめる</button>
+    </Modal>
+  );
+}
 
-  if (dayView) {
-    return <DayModal dk={dayView} rec={records[dayView]} records={records} setRecords={setRecords} onClose={() => setDayView(null)} />;
-  }
+function RecordDetail({ recordKey, record, onRecords, onClose }) {
+  const [status, setStatus] = useState("");
+  const questions = recordQuestions(record, recordKey);
 
-  if (weekView) {
-    return <WeekModal records={records} onClose={() => setWeekView(false)} />;
-  }
+  const updatePhoto = async (file) => {
+    if (!file) return;
+    setStatus("写真を小さくしています…");
+    try {
+      const photo = await compressPhoto(file);
+      const result = onRecords((current) => ({
+        ...current,
+        [recordKey]: { ...current[recordKey], photo },
+      }));
+      setStatus(result.ok ? "写真をのこしました。" : result.message);
+    } catch (error) {
+      setStatus(error.message);
+    }
+  };
 
-  const cells = [];
-  for (let i = 0; i < firstDay; i++) cells.push(null);
-  for (let d = 1; d <= lastDay; d++) cells.push(d);
+  const removePhoto = () => {
+    const result = onRecords((current) => ({
+      ...current,
+      [recordKey]: { ...current[recordKey], photo: null },
+    }));
+    setStatus(result.ok ? "写真を消しました。" : result.message);
+  };
 
   return (
-    <Modal onClose={onClose}>
-      <MHead title={yr + "年" + (mo + 1) + "月"} onClose={onClose} />
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(7,1fr)", gap: 4, marginBottom: 12 }}>
-        {["日", "月", "火", "水", "木", "金", "土"].map((d) => (
-          <div key={d} style={{ textAlign: "center", fontSize: 11, color: "#b8a0a8", padding: "4px 0" }}>{d}</div>
-        ))}
-        {cells.map((d, i) => {
-          if (!d) return <div key={"e" + i} />;
-          const k = prefix + "-" + String(d).padStart(2, "0");
-          const done = !!records[k];
-          const hasPhoto = done && !!records[k].photo;
-          const isToday = k === tk;
+    <Modal title={`${recordKey} の記録`} onClose={onClose}>
+      {record.photo ? (
+        <div className="photo-wrap">
+          <img src={record.photo} alt={`${recordKey}にのこした写真`} />
+          <button className="photo-remove" type="button" onClick={removePhoto}>写真を消す</button>
+        </div>
+      ) : (
+        <label className="photo-input">
+          写真を1枚つける
+          <input type="file" accept="image/*" onChange={(event) => updatePhoto(event.target.files?.[0])} />
+        </label>
+      )}
+      <p className="small">写真は関連する記事を探すためには使いません。送るときも、写真を入れるか自分でえらべます。</p>
+      {status && <p className="status" role="status">{status}</p>}
+      <div className="answer-list">
+        {record.answers?.map((answer, index) => {
+          const question = questions[index];
           return (
-            <div key={k} onClick={() => { if (done) setDayView(k); }} style={{ textAlign: "center", fontSize: 13, padding: "6px 2px", borderRadius: 8, color: done ? "#9b6b7a" : "#6a4858", background: done ? "#fdf0f2" : "transparent", fontWeight: done ? 500 : 400, cursor: done ? "pointer" : "default", outline: isToday ? "2px solid #c4788a" : "none", outlineOffset: -2 }}>
-              {d}
-              {done && <div style={{ width: 5, height: 5, borderRadius: "50%", margin: "2px auto 0", background: hasPhoto ? "#9b6b7a" : "#c4788a" }} />}
+            <div key={`${recordKey}-${index}`}>
+              <p>{question?.emoji} {question?.text || "その日の質問"}</p>
+              <span>{answer.label || ANSWER_LABELS[answer.type] || "こたえた"}</span>
             </div>
           );
         })}
       </div>
-      <div style={{ fontSize: 12, color: "#b8a0a8", display: "flex", gap: 12, marginBottom: 16 }}>
-        <span><span style={{ display: "inline-block", width: 6, height: 6, borderRadius: "50%", background: "#c4788a", verticalAlign: "middle", marginRight: 4 }} />記録あり</span>
-        <span><span style={{ display: "inline-block", width: 6, height: 6, borderRadius: "50%", background: "#9b6b7a", verticalAlign: "middle", marginRight: 4 }} />写真あり</span>
-      </div>
-      <button onClick={() => setWeekView(true)} style={{ padding: "14px 20px", borderRadius: 14, border: "1.5px solid #e8c0c8", cursor: "pointer", fontFamily: "'Zen Maru Gothic',sans-serif", fontSize: 15, fontWeight: 500, width: "100%", background: "#fdf0f2", color: "#9b6b7a" }}>📊 今週の問いかけ一覧</button>
+      <MemoItems record={record} />
+      <h2>今日のまとめ</h2>
+      <p className="summary">{record.summary}</p>
+      <RelatedArticles text={recordSearchText(record)} />
+      <button className="button secondary" type="button" onClick={onClose}>閉じる</button>
     </Modal>
   );
 }
 
-function MonthReportModal({ report, onClose }) {
+function Calendar({ records, onRecords, onClose }) {
+  const now = new Date();
+  const currentMonthIndex = monthIndex(now);
+  const [shownMonthIndex, setShownMonthIndex] = useState(currentMonthIndex);
+  const [detailKey, setDetailKey] = useState(null);
+  const [reportOpen, setReportOpen] = useState(false);
+  const [status, setStatus] = useState("");
+  const importRef = useRef(null);
+  const { year, month } = monthParts(shownMonthIndex);
+  const days = new Date(year, month + 1, 0).getDate();
+  const offset = new Date(year, month, 1).getDay();
+  const isCurrentMonth = shownMonthIndex >= currentMonthIndex;
+
+  const importBackup = async (file) => {
+    if (!file) return;
+    try {
+      const imported = await readBackup(file);
+      const result = onRecords((current) => ({ ...current, ...imported }));
+      setStatus(result.ok ? "バックアップを読みこみました。" : result.message);
+    } catch (error) {
+      setStatus(error.message || "バックアップを読みこめませんでした。");
+    } finally {
+      if (importRef.current) importRef.current.value = "";
+    }
+  };
+
   return (
-    <Modal onClose={onClose} style={{ textAlign: "center" }}>
-      <div style={{ fontSize: 48, marginBottom: 16 }}>🌸</div>
-      <p style={{ fontFamily: "'Shippori Mincho',serif", fontSize: 19, color: "#3a2830", marginBottom: 20, lineHeight: 1.6 }}>{report.month}月の記録</p>
-      <div style={{ background: "linear-gradient(135deg,#fdf0f4,#f8f0f5)", borderRadius: 18, padding: 24, marginBottom: 24 }}>
-        <div style={{ fontSize: 48, fontWeight: 700, color: "#c4788a", marginBottom: 16 }}>{report.count}日</div>
-        <p style={{ fontFamily: "'Shippori Mincho',serif", fontSize: 15, color: "#4a3038", lineHeight: 2, textAlign: "left" }}>
-          {report.count}日、記録しました。でも、あなたがお子さんを見つめていない日は一日もありません。その観察が、健診では見えない家庭での育ちの記録になっています。{report.prevCount === 0 ? "これがあなたとお子さんの育ちの記録のはじまりです。" : (MP[report.month] || "")}
-        </p>
+    <Modal title="きづきカレンダー" onClose={onClose}>
+      <nav className="month-nav" aria-label="見る月">
+        <button className="month-button" type="button" onClick={() => setShownMonthIndex((value) => value - 1)}>← 前の月</button>
+        <strong aria-live="polite">{year}年{month + 1}月</strong>
+        <button className="month-button" type="button" onClick={() => setShownMonthIndex((value) => Math.min(value + 1, currentMonthIndex))} disabled={isCurrentMonth}>次の月 →</button>
+      </nav>
+
+      <div className="calendar" role="grid" aria-label={`${year}年${month + 1}月の記録`}>
+        {["日", "月", "火", "水", "木", "金", "土"].map((day) => <div className="weekday" role="columnheader" key={day}>{day}</div>)}
+        {Array.from({ length: offset }).map((_, index) => <div key={`blank-${index}`} />)}
+        {Array.from({ length: days }, (_, index) => {
+          const day = index + 1;
+          const key = dateKey(new Date(year, month, day));
+          const hasRecord = Boolean(records[key]);
+          return (
+            <button
+              className={`day${hasRecord ? " recorded" : ""}`}
+              type="button"
+              role="gridcell"
+              key={key}
+              disabled={!hasRecord}
+              aria-label={`${month + 1}月${day}日${hasRecord ? "、記録あり" : "、記録なし"}`}
+              onClick={() => hasRecord && setDetailKey(key)}
+            >
+              {day}{hasRecord && <span aria-hidden="true">•</span>}
+            </button>
+          );
+        })}
       </div>
-      <button onClick={onClose} style={{ padding: "14px 20px", borderRadius: 14, border: "none", cursor: "pointer", fontFamily: "'Zen Maru Gothic',sans-serif", fontSize: 15, fontWeight: 500, width: "100%", background: "#7a4a58", color: "white" }}>今月もはじめる</button>
+
+      <div className="report-entry">
+        <h2>相談に持っていくメモ</h2>
+        <p className="small">この月の記録から、次の相談で見せるメモを作れます。</p>
+        <button className="button primary" type="button" disabled={!recordsForMonth(records, year, month).length} onClick={() => setReportOpen(true)}>メモを作る</button>
+      </div>
+
+      <div className="backup-actions">
+        <h2>もしものためのバックアップ</h2>
+        <p className="small">スマホを変えたときなどに、記録をもどすためのファイルです。相談で見せるものではありません。</p>
+        <button className="button secondary" type="button" onClick={() => downloadBackup(records)}>バックアップをのこす</button>
+        <button className="button secondary" type="button" onClick={() => importRef.current?.click()}>バックアップを読みこむ</button>
+        <input ref={importRef} className="visually-hidden" type="file" accept="application/json,.json" onChange={(event) => importBackup(event.target.files?.[0])} />
+        {status && <p className="status" role="status">{status}</p>}
+      </div>
+
+      {detailKey && records[detailKey] && (
+        <RecordDetail recordKey={detailKey} record={records[detailKey]} onRecords={onRecords} onClose={() => setDetailKey(null)} />
+      )}
+      {reportOpen && <ConsultationReport records={records} year={year} month={month} onClose={() => setReportOpen(false)} />}
     </Modal>
   );
 }
-
-const BTN = { padding: "14px 20px", borderRadius: 14, border: "none", cursor: "pointer", fontFamily: "'Zen Maru Gothic',sans-serif", fontSize: 15, fontWeight: 500, width: "100%", display: "block", marginTop: 10 };
-const BTN_DARK = Object.assign({}, BTN, { background: "#7a4a58", color: "white" });
-const BTN_SOFT = Object.assign({}, BTN, { background: "#fdf0f2", color: "#9b6b7a", border: "1.5px solid #e8c0c8" });
-const BTN_GHOST = Object.assign({}, BTN, { background: "transparent", color: "#b8a0a8", fontSize: 13 });
-const BTN_YES = Object.assign({}, BTN, { background: "#c4788a", color: "white", marginTop: 0 });
-const BTN_KINDA = Object.assign({}, BTN, { background: "#fdf0f2", color: "#9b6b7a", border: "1.5px solid #e8c0c8" });
-const BTN_NO = Object.assign({}, BTN, { background: "#f5f2f3", color: "#a89098" });
-const CARD = { background: "white", borderRadius: 24, padding: "36px 32px", maxWidth: 420, width: "100%", boxShadow: "0 4px 32px rgba(150,80,100,0.08)", position: "relative", zIndex: 1 };
-const SUMMARY_BOX = { background: "linear-gradient(135deg,#fdf0f4,#f8f0f5)", borderRadius: 18, padding: 24, fontSize: 15, color: "#4a3038", lineHeight: 1.9, marginBottom: 24 };
 
 export default function App() {
-  const tk = tkey();
-  const qs = getQs(tk);
-  const now = new Date();
-  const mo = now.getMonth() + 1;
-  const dy = now.getDate();
-
-  const [agreed, setAgreed] = useState(true);
-  const [screen, setScreen] = useState("home");
-  const [qi, setQi] = useState(0);
+  const today = dateKey();
+  const questions = useMemo(() => questionsForDate(today), [today]);
+  const [consented, setConsented] = useState(() => localStorage.getItem(CONSENT_KEY) === "accepted");
+  const [records, setRecords] = useState(loadRecords);
+  const [step, setStep] = useState(0);
   const [answers, setAnswers] = useState([]);
-  const answersRef = useRef([]);
-  const [resp, setResp] = useState("");
-  const [summary, setSummary] = useState("");
-  const [loading, setLoading] = useState(false);
-  const [records, setRecords] = useState({});
-  const [showCal, setShowCal] = useState(false);
-  const [monthReport, setMonthReport] = useState(null);
+  const [selectedAnswer, setSelectedAnswer] = useState(null);
+  const [observation, setObservation] = useState(() => recordObservation(records[today]));
+  const [interpretation, setInterpretation] = useState(() => records[today]?.interpretation || "");
+  const [concern, setConcern] = useState(() => records[today]?.concern || "");
+  const [screen, setScreen] = useState(() => records[today] ? "done" : "home");
+  const [summary, setSummary] = useState(() => records[today]?.summary || "");
+  const [calendarOpen, setCalendarOpen] = useState(false);
+  const [includePhoto, setIncludePhoto] = useState(false);
+  const [status, setStatus] = useState("");
 
-  useEffect(() => {
-    answersRef.current = answers;
-  }, [answers]);
+  const updateRecords = (updater) => {
+    const next = updater(records);
+    const result = saveRecords(next);
+    if (result.ok) setRecords(next);
+    return result;
+  };
 
-  useEffect(() => {
-    if (!localStorage.getItem("kizuki_agreed")) setAgreed(false);
+  const acceptConsent = () => {
+    try {
+      localStorage.setItem(CONSENT_KEY, "accepted");
+    } catch {
+      // 保存できなくても、この画面では使い続けられる。
+    }
+    setConsented(true);
+  };
 
-    const all = load();
-    setRecords(all);
+  const confirmAnswer = () => {
+    if (!selectedAnswer) return;
+    const question = questions[step];
+    const nextAnswers = [...answers, answerForQuestion(question, selectedAnswer)];
+    setAnswers(nextAnswers);
+    setSelectedAnswer(null);
+    if (step < questions.length - 1) setStep((current) => current + 1);
+    else setScreen("review");
+  };
 
-    const lastOpen = localStorage.getItem("kizuki_open");
-    localStorage.setItem("kizuki_open", tk);
+  const editTodayMemo = () => {
+    setAnswers(records[today]?.answers || []);
+    setSelectedAnswer(null);
+    setObservation(recordObservation(records[today]));
+    setInterpretation(records[today]?.interpretation || "");
+    setConcern(records[today]?.concern || "");
+    setStatus("");
+    setScreen("review");
+  };
 
-    if (lastOpen && lastOpen !== tk) {
-      const ld = new Date(lastOpen);
-      if (!isNaN(ld.getTime())) {
-        const nd = new Date();
-        if (nd.getMonth() !== ld.getMonth() || nd.getFullYear() !== ld.getFullYear()) {
-          const lmo = ld.getMonth();
-          const lyr = ld.getFullYear();
-          const pfx = lyr + "-" + String(lmo + 1).padStart(2, "0");
-          const dim = new Date(lyr, lmo + 1, 0).getDate();
-          let count = 0;
-          for (let d = 1; d <= dim; d++) {
-            const k = pfx + "-" + String(d).padStart(2, "0");
-            if (all[k] && all[k].completed) count++;
-          }
-          if (count > 0) {
-            const pmo = lmo === 0 ? 11 : lmo - 1;
-            const pyr = lmo === 0 ? lyr - 1 : lyr;
-            const ppfx = pyr + "-" + String(pmo + 1).padStart(2, "0");
-            const pdim = new Date(pyr, pmo + 1, 0).getDate();
-            let prev = 0;
-            for (let d = 1; d <= pdim; d++) {
-              const k = ppfx + "-" + String(d).padStart(2, "0");
-              if (all[k] && all[k].completed) prev++;
-            }
-            setMonthReport({ count, prevCount: prev, month: lmo + 1 });
-          }
+  const restartToday = () => {
+    setStep(0);
+    setAnswers([]);
+    setSelectedAnswer(null);
+    setObservation(recordObservation(records[today]));
+    setInterpretation(records[today]?.interpretation || "");
+    setConcern(records[today]?.concern || "");
+    setIncludePhoto(false);
+    setStatus("");
+    setScreen("question");
+  };
+
+  const finish = () => {
+    setStatus("");
+    const nextSummary = fallbackSummary(answers);
+    const nextRecords = {
+      ...records,
+      [today]: {
+        date: today,
+        answers,
+        observation: observation.trim(),
+        interpretation: interpretation.trim(),
+        concern: concern.trim(),
+        note: observation.trim(),
+        summary: nextSummary,
+        summarySource: "fixed",
+        photo: records[today]?.photo || null,
+      },
+    };
+    const result = saveRecords(nextRecords);
+    if (!result.ok) {
+      setStatus(result.message);
+      return;
+    }
+    setRecords(nextRecords);
+    setSummary(nextSummary);
+    setScreen("done");
+  };
+
+  const share = async () => {
+    const record = records[today] || { observation, interpretation, concern };
+    const memoText = recordMemoItems(record).map((item) => `${item.label}：${item.value}`).join("\n");
+    const text = `きづきカレンダー ${today}\n${summary}${memoText ? `\n\n${memoText}` : ""}\n\n※おうちで見たことをのこした記録です。「できる・できない」を決めるものではありません。`;
+    try {
+      if (navigator.share) {
+        const shareData = { title: "きづきカレンダー", text };
+        if (includePhoto && records[today]?.photo) {
+          const blob = await (await fetch(records[today].photo)).blob();
+          const file = new File([blob], `kizuki-${today}.jpg`, { type: blob.type || "image/jpeg" });
+          if (!navigator.canShare?.({ files: [file] })) throw new Error("この端末では写真をいっしょに送れません。写真のチェックを外して、文章だけ送ってください。");
+          shareData.files = [file];
         }
+        await navigator.share(shareData);
+        setStatus(shareData.files ? "送る画面を開きました。写真も入っています。" : "送る画面を開きました。文章だけ入っています。");
+      } else if (navigator.clipboard) {
+        if (includePhoto) throw new Error("この端末では写真をいっしょに送れません。写真のチェックを外してください。");
+        await navigator.clipboard.writeText(text);
+        setStatus("文章をコピーしました。");
       } else {
-        localStorage.removeItem("kizuki_open");
+        throw new Error("この端末では送れませんでした。");
       }
+    } catch (error) {
+      if (error.name !== "AbortError") setStatus(error.message || "うまく送れませんでした。");
     }
-
-    if (all[tk] && all[tk].completed) {
-      setSummary(all[tk].summary || "");
-      setAnswers(all[tk].answers || []);
-      answersRef.current = all[tk].answers || [];
-      setScreen("done");
-    }
-  }, [tk]);
-
-  function handleAgree() {
-    localStorage.setItem("kizuki_agreed", "1");
-    setAgreed(true);
-  }
-
-  const streak = (() => {
-    let n = 0;
-    const d = new Date();
-    for (let i = 0; i < 365; i++) {
-      if (records[dkey(d)]) {
-        n++;
-        d.setDate(d.getDate() - 1);
-      } else {
-        break;
-      }
-    }
-    return n;
-  })();
-
-  function answer(type) {
-    const labels = { yes: "はい", kinda: "ちょっとだけ", no: "今日はなかったかな" };
-    const q = qs[qi] || qs[0];
-    const newAnswer = { questionId: q.id, text: labels[type], type };
-    const newAnswers = answersRef.current.concat([newAnswer]);
-    answersRef.current = newAnswers;
-    setAnswers(newAnswers);
-    setResp((R[q.id] && R[q.id][type]) || "");
-    setScreen("resp");
-  }
-
-  async function next() {
-    const currentAnswers = answersRef.current;
-
-    if (qi + 1 >= qs.length) {
-      setScreen("summary");
-      setLoading(true);
-
-      const s = makeSummary(qs, currentAnswers);
-
-      setTimeout(() => {
-        setSummary(s);
-        setLoading(false);
-        const nr = Object.assign({}, records);
-        nr[tk] = { completed: true, summary: s, answers: currentAnswers };
-        setRecords(nr);
-        save(nr);
-      }, 500);
-    } else {
-      setQi(qi + 1);
-      setResp("");
-      setScreen("q");
-    }
-  }
-
-  function lineShare() {
-    if (!summary || loading) return;
-    const currentAnswers = answersRef.current;
-    const lines = [mo + "月" + dy + "日の記録\n"];
-
-    qs.forEach((q, i) => {
-      const a = currentAnswers[i];
-      if (a) lines.push(q.text + "\n→ " + a.text);
-    });
-
-    lines.push("\n" + summary + "\n\nきづきカレンダー");
-
-    const a = document.createElement("a");
-    a.href = "https://line.me/R/share?text=" + encodeURIComponent(lines.join("\n"));
-    a.target = "_blank";
-    a.rel = "noopener noreferrer";
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-  }
-
-  const q = qs[qi] || qs[0];
+  };
 
   return (
-    <>
-      <style>{`@import url('https://fonts.googleapis.com/css2?family=Zen+Maru+Gothic:wght@400;500;700&family=Shippori+Mincho:wght@400;600&display=swap'); *{box-sizing:border-box;margin:0;padding:0;} body{background:#faf5f6;min-height:100vh;} .app{font-family:'Zen Maru Gothic',sans-serif;min-height:100vh;background:#faf5f6;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:24px 20px;} @keyframes fu{from{opacity:0;transform:translateY(16px);}to{opacity:1;transform:translateY(0);}} .card-anim{animation:fu 0.4s ease;}`}</style>
-      <div className="app">
-        {!agreed && <DisclaimerModal onAgree={handleAgree} />}
-        {showCal && <CalModal records={records} setRecords={setRecords} onClose={() => setShowCal(false)} />}
-        {monthReport && <MonthReportModal report={monthReport} onClose={() => setMonthReport(null)} />}
-
+    <main className="app">
+      <section className="card">
         {screen === "home" && (
-          <div style={CARD} className="card-anim">
-            <div style={{ fontSize: 52, textAlign: "center", marginBottom: 16 }}>🌱</div>
-            <p style={{ fontSize: 12, color: "#b8a0a8", textAlign: "center", marginBottom: 4 }}>
-              1歳半健診で様子を見ましょうと<br />言われたお子さんのための
-            </p>
-            <h1 style={{ fontFamily: "'Shippori Mincho',serif", fontSize: 24, fontWeight: 600, color: "#3a2830", textAlign: "center", lineHeight: 1.6, marginBottom: 24 }}>きづきカレンダー</h1>
+          <>
+            <div className="hero-icon" aria-hidden="true">🌱</div>
+            <p className="eyebrow">「様子を見ましょう」の、そのあとに</p>
+            <h1>きづきカレンダー</h1>
+            <p><strong>健診のあと、次に相談するまで。</strong> 1日3問で、家で見えた小さな変化をのこすカレンダーです。</p>
+            <p className="small">できたかどうかを判定するのではなく、今日のお子さんの様子を思い出すために使います。</p>
+            <button className="button primary" type="button" onClick={() => setScreen("question")}>今日の3問をはじめる</button>
+            <button className="button ghost" type="button" onClick={() => setCalendarOpen(true)}>これまでの記録を見る</button>
+          </>
+        )}
 
-            {streak > 0 && (
-              <div style={{ background: "linear-gradient(135deg,#fdf0f2,#f8e8ec)", border: "1.5px solid #e8c0c8", borderRadius: 16, padding: "12px 20px", textAlign: "center", marginBottom: 24, fontSize: 13, color: "#9b6b7a" }}>
-                <span style={{ fontSize: 28, fontWeight: 700, color: "#c4788a", display: "block" }}>🔥 {streak}日連続</span>
-                続いています
+        {screen === "question" && (
+          <>
+            <p className="progress-text">{step + 1} / 3</p>
+            <progress value={step + 1} max="3">{step + 1} / 3</progress>
+            <p className="eyebrow">{DOMAIN_LABELS[questions[step].domain]}</p>
+            <div className="question-emoji" aria-hidden="true">{questions[step].emoji}</div>
+            <h1>{questions[step].text}</h1>
+            <p className="hint">{questions[step].hint}</p>
+            <p id="answer-help" className="answer-help">いちばん近いものを1つえらんでください。</p>
+            <div role="group" aria-label="こたえ" aria-describedby="answer-help">
+              {Object.entries(ANSWER_LABELS).map(([type, label]) => (
+                <button
+                  className={`button answer${selectedAnswer === type ? " selected" : ""}`}
+                  type="button"
+                  key={type}
+                  aria-pressed={selectedAnswer === type}
+                  onClick={() => setSelectedAnswer(type)}
+                >
+                  {selectedAnswer === type && <span aria-hidden="true">✓ </span>}{label}
+                </button>
+              ))}
+            </div>
+            <button className="button primary confirm-answer" type="button" disabled={!selectedAnswer} onClick={confirmAnswer}>{step === 2 ? "これでメモへ" : "これで次へ"}</button>
+          </>
+        )}
+
+        {screen === "review" && (
+          <>
+            <div className="hero-icon" aria-hidden="true">📝</div>
+            <h1>今日のことを、もう少しのこす？</h1>
+            <p>見たこと、そう思ったこと、気になったことを分けて残せます。全部書かなくても大丈夫です。</p>
+            <div className="memo-fields">
+              <div className="memo-field-group">
+                <label htmlFor="observation"><strong>今日あったこと</strong> <span className="small">（なくてもOK）</span></label>
+                <p className="small">見たこと・聞いたことを、そのまま。</p>
+                <textarea id="observation" maxLength="500" value={observation} onChange={(event) => setObservation(event.target.value)} placeholder="例：公園から帰る声をかけると、地面に座って泣いた" />
               </div>
-            )}
 
-            <button style={BTN_DARK} onClick={() => setScreen("q")}>今日の記録をはじめる</button>
-            <button style={BTN_SOFT} onClick={() => setShowCal(true)}>📅 カレンダーを見る</button>
-          </div>
+              <div className="memo-field-group">
+                <label htmlFor="interpretation"><strong>こうかなと思ったこと</strong> <span className="small">（書きたいときだけ）</span></label>
+                <p className="small">見たこととは分けて、「こういう気持ちかな」などを。</p>
+                <textarea id="interpretation" maxLength="500" value={interpretation} onChange={(event) => setInterpretation(event.target.value)} placeholder="例：まだ遊びたかったのかなと思った" />
+              </div>
+
+              <div className="memo-field-group">
+                <label htmlFor="concern"><strong>気になったこと</strong> <span className="small">（書きたいときだけ）</span></label>
+                <p className="small">あとで相談したいことや、心配していることがあれば。</p>
+                <textarea id="concern" maxLength="500" value={concern} onChange={(event) => setConcern(event.target.value)} placeholder="例：切り替えるときに毎回とても泣くのが気になる" />
+              </div>
+
+              <p className="small">文字を打つのが大変なときは、どの欄もスマホのキーボードにあるマイクから話して入力できます。</p>
+            </div>
+            <p className="small">記録に近いテーマが見つかったときだけ、確認済みの記事をあとで表示します。</p>
+            <button className="button primary" type="button" onClick={finish}>今日の記録をのこす</button>
+            {status && <p className="status" role="status">{status}</p>}
+          </>
         )}
 
         {screen === "done" && (
-          <div style={Object.assign({}, CARD, { textAlign: "center" })} className="card-anim">
-            <div style={{ fontSize: 48, marginBottom: 16 }}>🌸</div>
-            <p style={{ fontSize: 12, color: "#b8a0a8", marginBottom: 4 }}>
-              1歳半健診で様子を見ましょうと<br />言われたお子さんのための
-            </p>
-            <h2 style={{ fontFamily: "'Shippori Mincho',serif", fontSize: 20, fontWeight: 600, color: "#3a2830", marginBottom: 12 }}>きづきカレンダー</h2>
-            <p style={{ fontFamily: "'Shippori Mincho',serif", fontSize: 16, color: "#9b6b7a", marginBottom: 20, lineHeight: 1.6 }}>あなたが今日もがんばっていたこと、<br />伝わりました 🌿</p>
-            <div style={SUMMARY_BOX}>{summary}</div>
-            <button style={Object.assign({}, BTN_SOFT, { marginTop: 0 })} onClick={() => setShowCal(true)}>📅 カレンダーを見る</button>
-            <button style={BTN_GHOST} onClick={lineShare}>💚 LINEで保存・シェアする</button>
-            <p style={{ fontSize: 13, color: "#a89098", marginTop: 16 }}>また明日ここに来てね。</p>
-          </div>
-        )}
-
-        {screen === "q" && (
-          <div style={CARD} className="card-anim">
-            <div style={{ display: "inline-block", background: "#fdf0f2", color: "#9b6b7a", fontSize: 12, padding: "4px 12px", borderRadius: 20, marginBottom: 20 }}>{mo}月{dy}日</div>
-            <div style={{ height: 4, background: "#f0e8ea", borderRadius: 4, marginBottom: 28, overflow: "hidden" }}>
-              <div style={{ height: "100%", background: "linear-gradient(90deg,#d4909a,#c4788a)", borderRadius: 4, width: (qi / qs.length * 100) + "%" }} />
-            </div>
-            <div style={{ fontSize: 12, color: "#b8a0a8", marginBottom: 12 }}>{qi + 1} / {qs.length}</div>
-            <div style={{ fontSize: 36, marginBottom: 12 }}>{q.emoji}</div>
-            <p style={{ fontFamily: "'Shippori Mincho',serif", fontSize: 18, color: "#3a2830", lineHeight: 1.7, marginBottom: 8 }}>{q.text}</p>
-            <p style={{ fontSize: 12, color: "#b8a0a8", marginBottom: 28, lineHeight: 1.5 }}>{q.hint}</p>
-            <button style={BTN_YES} onClick={() => answer("yes")}>はい</button>
-            <button style={BTN_KINDA} onClick={() => answer("kinda")}>ちょっとだけ</button>
-            <button style={BTN_NO} onClick={() => answer("no")}>今日はなかったかな</button>
-          </div>
-        )}
-
-        {screen === "resp" && (
-          <div style={CARD} className="card-anim">
-            <div style={{ fontSize: 12, color: "#b8a0a8", marginBottom: 12 }}>{qi + 1} / {qs.length}</div>
-            <div style={{ fontSize: 36, marginBottom: 12 }}>{q.emoji}</div>
-            <p style={{ fontFamily: "'Shippori Mincho',serif", fontSize: 15, color: "#3a2830", lineHeight: 1.7, marginBottom: 6 }}>{q.text}</p>
-            <p style={{ fontSize: 13, color: "#b8a0a8", marginBottom: 16 }}>→ {answers[answers.length - 1] && answers[answers.length - 1].text}</p>
-            <div style={{ fontSize: 11, color: "#9b6b7a", marginBottom: 6, fontWeight: 500, letterSpacing: "0.05em" }}>💬 サトウさんより</div>
-            <div style={{ background: "#fdf0f4", borderLeft: "3px solid #c4788a", borderRadius: "0 14px 14px 14px", padding: "18px 20px", marginBottom: 24, fontSize: 15, color: "#4a3038", lineHeight: 1.8 }}>{resp}</div>
-            <button style={Object.assign({}, BTN_DARK, { marginTop: 0 })} onClick={next}>{qi + 1 >= qs.length ? "今日のまとめを見る" : "次へ"}</button>
-          </div>
-        )}
-
-        {screen === "summary" && (
-          <div style={CARD} className="card-anim">
-            <div style={{ display: "inline-block", background: "#fdf0f2", color: "#9b6b7a", fontSize: 12, padding: "4px 12px", borderRadius: 20, marginBottom: 20 }}>{mo}月{dy}日の記録</div>
-            <p style={{ fontFamily: "'Shippori Mincho',serif", fontSize: 17, color: "#3a2830", marginBottom: 20, lineHeight: 1.6 }}>あなたが今日もがんばっていたこと、<br />伝わりました 🌿</p>
-            {loading ? (
-              <p style={{ textAlign: "center", color: "#b8a0a8", padding: "32px 0" }}>まとめています…</p>
-            ) : (
-              <div style={SUMMARY_BOX}>{summary}</div>
+          <>
+            <div className="hero-icon" aria-hidden="true">🌿</div>
+            <p className="eyebrow">{today}</p>
+            <h1>今日の記録、できました</h1>
+            <p className="summary">{summary}</p>
+            <p className="small">これは、おうちで見たことをまとめた記録です。「できる・できない」を決めるものではありません。</p>
+            <MemoItems record={records[today] || { observation, interpretation, concern }} />
+            <RelatedArticles text={recordSearchText(records[today] || { observation, interpretation, concern })} />
+            {records[today]?.photo && (
+              <label className="check">
+                <input type="checkbox" checked={includePhoto} onChange={(event) => setIncludePhoto(event.target.checked)} />
+                写真もいっしょに送る
+              </label>
             )}
-            <button style={Object.assign({}, BTN_SOFT, { marginTop: 0 })} onClick={() => setShowCal(true)}>📅 カレンダーを見る</button>
-            <button style={Object.assign({}, BTN_GHOST, { opacity: loading ? 0.4 : 1 })} onClick={lineShare} disabled={loading}>💚 LINEで保存・シェアする</button>
-            <button style={BTN_GHOST} onClick={() => setScreen("home")}>トップに戻る</button>
-          </div>
+            <button className="button primary" type="button" onClick={share}>{includePhoto ? "文章と写真を送る" : "文章を送る"}</button>
+            <button className="button secondary" type="button" onClick={editTodayMemo}>今日のメモを追加・直す</button>
+            <button className="button secondary" type="button" onClick={() => setCalendarOpen(true)}>カレンダーを見る</button>
+            <button className="button ghost" type="button" onClick={restartToday}>今日の3問をやり直す</button>
+            {status && <p className="status" role="status">{status}</p>}
+          </>
         )}
-      </div>
-    </>
+      </section>
+
+      {!consented && <Consent onAccept={acceptConsent} />}
+      {calendarOpen && <Calendar records={records} onRecords={updateRecords} onClose={() => setCalendarOpen(false)} />}
+    </main>
   );
 }
