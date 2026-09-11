@@ -1,6 +1,8 @@
 import { useEffect, useId, useMemo, useRef, useState } from "react";
 import {
   ANSWER_LABELS,
+  REPORT_FIELD_LABELS,
+  ageInYearsMonths,
   answerForQuestion,
   consultationReportText,
   dateKey,
@@ -80,16 +82,22 @@ function Modal({ title, onClose, children, persistent = false, className = "" })
 }
 
 function ConsultationReport({ records, year, month, onClose }) {
-  const [childName, setChildName] = useState("");
-  const [topic, setTopic] = useState("");
+  const [details, setDetails] = useState({});
   const [status, setStatus] = useState("");
   const entries = recordsForMonth(records, year, month);
+  const updateDetail = (key, value) => setDetails((current) => ({ ...current, [key]: value }));
+  const summaryItems = Object.entries(REPORT_FIELD_LABELS).flatMap(([key, label]) => {
+    const value = String(details[key] || "").trim();
+    if (!value) return [];
+    const age = key === "birthDate" ? ageInYearsMonths(value) : "";
+    return [{ key, label, value: `${value}${age ? `（作成日時点 ${age}）` : ""}` }];
+  });
 
   const shareReport = async () => {
-    const text = consultationReportText(records, year, month, childName, topic);
+    const text = consultationReportText(records, year, month, details);
     try {
       if (navigator.share) {
-        await navigator.share({ title: `${year}年${month + 1}月 相談用記録`, text });
+        await navigator.share({ title: `${year}年${month + 1}月 相談前整理シート`, text });
         setStatus("共有画面を開きました。");
       } else if (navigator.clipboard) {
         await navigator.clipboard.writeText(text);
@@ -103,19 +111,46 @@ function ConsultationReport({ records, year, month, onClose }) {
   };
 
   return (
-    <Modal title={`${year}年${month + 1}月 相談用レポート`} onClose={onClose} className="consultation-report">
-      <p className="report-lead">相談先へ見せるため、表示中の月の記録を日付順にまとめます。</p>
+    <Modal title={`${year}年${month + 1}月 相談前整理シート`} onClose={onClose} className="consultation-report">
+      <p className="report-lead">相談員が状況を把握しやすい要点を先に整理し、日々の記録を付録としてまとめます。分かる範囲だけ入力してください。</p>
       <div className="report-form">
+        <h2>基本情報</h2>
         <label htmlFor="report-child">お子さんの呼び名（任意）</label>
-        <input id="report-child" value={childName} onChange={(event) => setChildName(event.target.value)} maxLength="30" />
-        <label htmlFor="report-topic">相談時に聞きたいこと（任意）</label>
-        <textarea id="report-topic" value={topic} onChange={(event) => setTopic(event.target.value)} maxLength="300" />
-        <p className="small">ここに入力した内容は端末へ保存せず、AIにも送信しません。</p>
+        <input id="report-child" value={details.childName || ""} onChange={(event) => updateDetail("childName", event.target.value)} maxLength="30" />
+        <label htmlFor="report-birth">生年月日（任意）</label>
+        <input id="report-birth" type="date" value={details.birthDate || ""} max={dateKey()} onChange={(event) => updateDetail("birthDate", event.target.value)} />
+
+        <h2>相談の要点</h2>
+        <ReportField id="main-concern" label="いちばん相談したいこと" value={details.mainConcern} onChange={(value) => updateDetail("mainConcern", value)} />
+        <ReportField id="concern-since" label="気になり始めた時期・以前との変化" value={details.concernSince} onChange={(value) => updateDetail("concernSince", value)} />
+        <ReportField id="contexts" label="起きる場面・相手・頻度" value={details.contexts} onChange={(value) => updateDetail("contexts", value)} />
+        <ReportField id="support-wanted" label="相談先に希望する支援・聞きたいこと" value={details.supportWanted} onChange={(value) => updateDetail("supportWanted", value)} />
+
+        <h2>生活と発達の様子</h2>
+        <ReportField id="communication" label="ことば・理解・やりとり" value={details.communication} onChange={(value) => updateDetail("communication", value)} />
+        <ReportField id="relationships" label="遊び・人との関わり" value={details.relationships} onChange={(value) => updateDetail("relationships", value)} />
+        <ReportField id="body-behavior" label="身体・感覚・行動" value={details.bodyBehavior} onChange={(value) => updateDetail("bodyBehavior", value)} />
+        <ReportField id="daily-life" label="食事・睡眠・排泄・健康" value={details.dailyLife} onChange={(value) => updateDetail("dailyLife", value)} />
+
+        <h2>本人・家庭の状況</h2>
+        <ReportField id="strengths" label="できていること・好きなこと" value={details.strengths} onChange={(value) => updateDetail("strengths", value)} />
+        <ReportField id="helps" label="試したこと・うまくいった対応" value={details.helps} onChange={(value) => updateDetail("helps", value)} />
+        <ReportField id="history" label="健診・受診・相談・支援の履歴" value={details.history} onChange={(value) => updateDetail("history", value)} />
+        <ReportField id="parent-needs" label="家庭で困っていること・保護者の負担" value={details.parentNeeds} onChange={(value) => updateDetail("parentNeeds", value)} />
+        <p className="small">ここで入力した内容は端末へ保存せず、AIにも送信しません。この画面を閉じると消えます。住所・勤務先などは入力しないでください。</p>
       </div>
-      <div className="report-meta">
-        <strong>記録日数：{entries.length}日</strong>
-        <p>家庭で見えた出来事の記録です。診断・評価ではありません。日によって質問が異なるため、回答数を発達の指標として比較することはできません。</p>
-      </div>
+      <section className="report-summary">
+        <h2>相談前の整理</h2>
+        <p><strong>観察期間：</strong>{year}年{month + 1}月 <strong>記録日数：</strong>{entries.length}日</p>
+        {summaryItems.length ? (
+          <dl>{summaryItems.map((item) => <div key={item.key}><dt>{item.label}</dt><dd>{item.value}</dd></div>)}</dl>
+        ) : (
+          <p className="small">上の欄へ入力した内容が、ここに相談用の要約として表示されます。</p>
+        )}
+        <p className="small">保護者が相談前に状況を整理するための資料です。診断・評価ではありません。必要な確認や判断は相談先で行ってください。</p>
+      </section>
+      <h2 className="report-appendix-title">日々の観察記録（付録）</h2>
+      <p className="small">日によって質問が異なるため、回答数を発達の指標として比較することはできません。</p>
       {entries.map(([key, record]) => {
         const questions = recordQuestions(record, key);
         return (
@@ -141,6 +176,15 @@ function ConsultationReport({ records, year, month, onClose }) {
         {status && <p className="status" role="status">{status}</p>}
       </div>
     </Modal>
+  );
+}
+
+function ReportField({ id, label, value = "", onChange }) {
+  return (
+    <label htmlFor={`report-${id}`}>
+      {label}（任意）
+      <textarea id={`report-${id}`} value={value} onChange={(event) => onChange(event.target.value)} maxLength="400" />
+    </label>
   );
 }
 

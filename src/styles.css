@@ -44,11 +44,17 @@ textarea { width: 100%; min-height: 110px; padding: 12px; margin-top: 8px; borde
 .day.recorded { background: #f7dfe5; color: #4b2532; cursor: pointer; font-weight: 800; }
 .day span { display: block; color: #8b3f54; line-height: .5; }
 .report-entry, .backup-actions { margin-top: 24px; padding-top: 4px; }
+.report-form h2 { margin-top: 26px; padding-bottom: 5px; border-bottom: 1px solid #d9cbd0; }
 .report-form label { display: block; margin-top: 14px; font-weight: 700; }
 .report-form input { width: 100%; min-height: 44px; margin-top: 6px; padding: 10px 12px; border: 2px solid #8e7580; border-radius: 10px; }
 .report-form textarea { min-height: 80px; }
-.report-meta { margin: 20px 0; padding: 14px; background: #fff1f4; border-radius: 12px; }
-.report-meta p { margin-bottom: 0; font-size: .84rem; }
+.report-summary { margin: 28px 0 20px; padding: 16px; background: #fff1f4; border-left: 4px solid #a9586d; border-radius: 4px 14px 14px 4px; }
+.report-summary h2 { margin-top: 0; }
+.report-summary dl { margin: 16px 0; }
+.report-summary dl div { margin-top: 14px; }
+.report-summary dt { font-weight: 800; color: #593744; }
+.report-summary dd { margin: 3px 0 0; line-height: 1.65; white-space: pre-wrap; }
+.report-appendix-title { margin-top: 28px; }
 .report-day { padding: 8px 0 16px; border-bottom: 1px solid #d9cbd0; }
 .report-day h2 { margin-bottom: 6px; }
 .report-day ul { margin: 0; padding-left: 20px; }
@@ -70,8 +76,8 @@ textarea { width: 100%; min-height: 110px; padding: 12px; margin-top: 8px; borde
   body * { visibility: hidden !important; }
   .consultation-report, .consultation-report * { visibility: visible !important; }
   .consultation-report { position: absolute; inset: 0; width: 100%; max-width: none; max-height: none; overflow: visible; padding: 0; box-shadow: none; }
-  .consultation-report .icon-button, .report-actions, .report-photo-note { display: none !important; }
-  .report-form input, .report-form textarea { border: 1px solid #777; }
+  .consultation-report .icon-button, .report-actions, .report-photo-note, .report-lead, .report-form { display: none !important; }
+  .report-summary { break-inside: avoid; }
   .report-day { break-inside: avoid; }
 }
 @media (prefers-reduced-motion: reduce) { *, *::before, *::after { scroll-behavior: auto !important; animation: none !important; } }

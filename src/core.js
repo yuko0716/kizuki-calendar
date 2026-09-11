@@ -107,16 +107,61 @@ export function recordsForMonth(records, year, month) {
     .sort(([first], [second]) => first.localeCompare(second));
 }
 
-export function consultationReportText(records, year, month, childName = "", topic = "") {
+export const REPORT_FIELD_LABELS = {
+  childName: "お子さんの呼び名",
+  birthDate: "生年月日",
+  mainConcern: "いちばん相談したいこと",
+  concernSince: "気になり始めた時期・変化",
+  contexts: "起きる場面・相手・頻度",
+  communication: "ことば・理解・やりとり",
+  relationships: "遊び・人との関わり",
+  bodyBehavior: "身体・感覚・行動",
+  dailyLife: "食事・睡眠・排泄・健康",
+  strengths: "できていること・好きなこと",
+  helps: "試したこと・うまくいった対応",
+  history: "健診・受診・相談・支援の履歴",
+  parentNeeds: "家庭で困っていること・負担",
+  supportWanted: "相談先に希望する支援",
+};
+
+export function ageInYearsMonths(birthDate, asOf = new Date()) {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(birthDate || "") || !(asOf instanceof Date) || Number.isNaN(asOf.getTime())) return "";
+  const [year, month, day] = birthDate.split("-").map(Number);
+  const birth = new Date(year, month - 1, day);
+  if (
+    birth.getFullYear() !== year
+    || birth.getMonth() !== month - 1
+    || birth.getDate() !== day
+    || birth > asOf
+  ) return "";
+
+  let months = (asOf.getFullYear() - year) * 12 + asOf.getMonth() - (month - 1);
+  if (asOf.getDate() < day) months -= 1;
+  return `${Math.floor(months / 12)}歳${months % 12}か月`;
+}
+
+export function consultationReportText(records, year, month, details = {}, asOf = new Date()) {
   const entries = recordsForMonth(records, year, month);
   const lines = [
-    "きづきカレンダー 相談用記録",
-    `対象月：${year}年${month + 1}月`,
+    "きづきカレンダー 相談前整理シート",
+    `作成日：${dateKey(asOf)}`,
+    `観察期間：${year}年${month + 1}月`,
     `記録日数：${entries.length}日`,
   ];
-  if (childName.trim()) lines.push(`お子さんの呼び名：${childName.trim()}`);
-  if (topic.trim()) lines.push(`相談時に聞きたいこと：${topic.trim()}`);
-  lines.push("", "※家庭で見えた出来事の記録です。診断・評価ではありません。日によって質問が異なるため、回答数を発達の指標として比較することはできません。");
+  lines.push("", "【相談前の整理】");
+  for (const [key, label] of Object.entries(REPORT_FIELD_LABELS)) {
+    const value = String(details[key] || "").trim();
+    if (!value) continue;
+    const age = key === "birthDate" ? ageInYearsMonths(value, asOf) : "";
+    lines.push(`${label}：${value}${age ? `（作成日時点 ${age}）` : ""}`);
+  }
+  lines.push(
+    "",
+    "※保護者が相談前に状況を整理するための資料です。医療・発達・親子関係の診断や評価ではありません。必要な確認や判断は相談先で行ってください。",
+    "",
+    "【日々の観察記録（付録）】",
+    "※日によって質問が異なるため、回答数を発達の指標として比較することはできません。",
+  );
 
   for (const [key, record] of entries) {
     lines.push("", `■ ${key}`);
