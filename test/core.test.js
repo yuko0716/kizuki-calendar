@@ -25,8 +25,8 @@ test("previous month navigation crosses the year boundary", () => {
   assert.deepEqual(monthParts(january - 1), { year: 2025, month: 11 });
 });
 
-test("consultation report contains only the selected month in date order", () => {
-  const makeRecord = (answer, note = "") => ({ answers: [{ type: answer, label: ANSWER_LABELS[answer], question: "見えたことはありましたか？" }], note });
+test("consultation memo contains only the selected month in date order", () => {
+  const makeRecord = (answer, note = "") => ({ answers: [{ type: answer, label: ANSWER_LABELS[answer], question: "気づいたことはありましたか？" }], note });
   const records = {
     "2026-09-12": makeRecord("no"),
     "2026-08-31": makeRecord("yes"),
@@ -39,16 +39,16 @@ test("consultation report contains only the selected month in date order", () =>
     mainConcern: "言葉について",
     contexts: "家で毎日",
     strengths: "積み木が好き",
-    supportWanted: "家庭での関わり方を相談したい",
+    supportWanted: "家での関わり方を聞きたい",
   }, new Date(2026, 8, 11));
-  assert.match(report, /相談前整理シート/);
-  assert.match(report, /お子さんの呼び名：はな/);
-  assert.match(report, /生年月日：2025-01-15（作成日時点 1歳7か月）/);
-  assert.match(report, /いちばん相談したいこと：言葉について/);
-  assert.match(report, /起きる場面・相手・頻度：家で毎日/);
-  assert.match(report, /できていること・好きなこと：積み木が好き/);
-  assert.match(report, /相談先に希望する支援：家庭での関わり方を相談したい/);
-  assert.match(report, /日々の観察記録（付録）/);
+  assert.match(report, /相談に持っていくメモ/);
+  assert.match(report, /呼び名：はな/);
+  assert.match(report, /生まれた日：2025-01-15（今 1歳7か月）/);
+  assert.match(report, /いちばん聞きたいこと：言葉について/);
+  assert.match(report, /どんなときに起きる？：家で毎日/);
+  assert.match(report, /好きなこと・得意なこと：積み木が好き/);
+  assert.match(report, /相談先で聞きたいこと：家での関わり方を聞きたい/);
+  assert.match(report, /選んだ日の記録/);
   assert.match(report, /積み木を並べた/);
   assert.ok(report.indexOf("2026-09-02") < report.indexOf("2026-09-12"));
   assert.doesNotMatch(report, /2026-08-31/);
@@ -61,7 +61,7 @@ test("age is calculated in completed years and months", () => {
   assert.equal(ageInYearsMonths("2026-02-30", new Date(2026, 8, 11)), "");
 });
 
-test("consultation report includes only explicitly selected record dates", () => {
+test("consultation memo includes only explicitly selected record dates", () => {
   const records = {
     "2026-09-01": { answers: [{ type: "yes", label: ANSWER_LABELS.yes, question: "1日の質問" }] },
     "2026-09-02": { answers: [{ type: "no", label: ANSWER_LABELS.no, question: "2日の質問" }] },
@@ -69,7 +69,7 @@ test("consultation report includes only explicitly selected record dates", () =>
   };
   assert.deepEqual(selectedRecordsForReport(records, 2026, 8, ["2026-09-03", "2026-09-01"]).map(([key]) => key), ["2026-09-01", "2026-09-03"]);
   const report = consultationReportText(records, 2026, 8, {}, new Date(2026, 8, 11), ["2026-09-03", "2026-09-01"]);
-  assert.match(report, /記録日数：2日/);
+  assert.match(report, /選んだ記録：2日分/);
   assert.match(report, /2026-09-01/);
   assert.match(report, /2026-09-03/);
   assert.doesNotMatch(report, /2026-09-02/);
@@ -100,11 +100,11 @@ test("daily questions are deterministic and advance through the 30-day cycle", (
   assert.deepEqual(day1.map(({ domain }) => domain), ["interaction", "play", "context"]);
 });
 
-test("answer labels describe observation rather than success or failure", () => {
+test("answer labels are simple and observation-focused", () => {
   assert.deepEqual(ANSWER_LABELS, {
     yes: "見つけた",
-    kinda: "少し気づいた",
-    no: "今日は分からなかった",
+    kinda: "ちょっと気づいた",
+    no: "今日はわからない",
   });
 });
 
@@ -118,7 +118,7 @@ test("user-facing prompts and summaries do not make guarantees or diagnoses", ()
   assert.doesNotMatch(copy, /必ず|絶対|保証|診断しました|信頼関係が育|言葉が来/);
 });
 
-test("fallback summary reflects answer mix without evaluating development", () => {
-  assert.match(fallbackSummary([{ type: "no" }, { type: "no" }, { type: "yes" }]), /分からなかった/);
-  assert.match(fallbackSummary([{ type: "kinda" }, { type: "kinda" }, { type: "yes" }]), /少し気づいた/);
+test("fallback summary stays neutral and easy to read", () => {
+  assert.match(fallbackSummary([{ type: "no" }, { type: "no" }, { type: "yes" }]), /わからない/);
+  assert.match(fallbackSummary([{ type: "kinda" }, { type: "kinda" }, { type: "yes" }]), /ちょっとした気づき/);
 });
